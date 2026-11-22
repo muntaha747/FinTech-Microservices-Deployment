@@ -1,0 +1,192 @@
+# =====================================================================================
+# kind cluster: 1 control-plane + 10 workers | NO default CNI (Calico) | 122 host ports
+# =====================================================================================
+# Create : kind create cluster --config /home/muntaha/DevOps/WezvaTech/kind-config.yaml
+# CNI    : kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/tigera-operator.yaml
+#          kubectl apply  -f /home/muntaha/DevOps/WezvaTech/calico-custom-resources.yaml
+# Delete : kind delete cluster --name fintech-cluster
+#
+# HOW PORTS WORK
+#   browser -> localhost:<hostPort> -> control-plane container:<containerPort>
+#           -> kube-proxy -> Service with that NodePort -> your pod (on ANY node)
+#   So set your Service to "type: NodePort" + "nodePort: <one of the ports below>".
+#   Ports can NOT be added to a running kind cluster; change this file + recreate.
+#
+# PORT PLAN (NodePort range is 30000-32767) - 122 ports, 20 per group
+#   80, 443       ingress controller (ingress-nginx), needs the host nginx STOPPED
+#                 TIP: with ingress you can add UNLIMITED tools on port 80 by hostname,
+#                 e.g. grafana.localhost, argocd.localhost (no new ports needed)
+#   30000-30019   general use; lab: 30000 = Prometheus
+#   30100-30119   observability UIs; lab: 30100 = Grafana (Loki, Alertmanager, Jaeger, Kiali, OpenSearch...)
+#   31000-31019   apps ACTIVE; lab: 31000 = ledger app active / Falcosidekick UI
+#   31100-31119   apps PREVIEW; lab: 31100 = ledger app preview (blue-green)
+#   32000-32019   CD / GitOps tools; lab: 32000 = ArgoCD UI (Argo Rollouts dashboard, Jenkins...)
+#   32100-32119   security + spare (Vault UI, SonarQube, Kubernetes dashboard...)
+# =====================================================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: fintech-cluster
+networking:
+  disableDefaultCNI: true        # no kindnet; install Calico after creating the cluster
+  podSubnet: "10.244.0.0/16"     # MUST match the Calico IPPool cidr (calico-custom-resources.yaml)
+                                 # NOT 192.168.0.0/16: clashes with home Wi-Fi 192.168.0.0/24
+nodes:
+  - role: control-plane
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # --- ingress ---
+      - { containerPort: 80,    hostPort: 80,    protocol: TCP }
+      - { containerPort: 443,   hostPort: 443,   protocol: TCP }
+      # --- general 30000-30019 ---
+      - { containerPort: 30000, hostPort: 30000, protocol: TCP }
+      - { containerPort: 30001, hostPort: 30001, protocol: TCP }
+      - { containerPort: 30002, hostPort: 30002, protocol: TCP }
+      - { containerPort: 30003, hostPort: 30003, protocol: TCP }
+      - { containerPort: 30004, hostPort: 30004, protocol: TCP }
+      - { containerPort: 30005, hostPort: 30005, protocol: TCP }
+      - { containerPort: 30006, hostPort: 30006, protocol: TCP }
+      - { containerPort: 30007, hostPort: 30007, protocol: TCP }
+      - { containerPort: 30008, hostPort: 30008, protocol: TCP }
+      - { containerPort: 30009, hostPort: 30009, protocol: TCP }
+      - { containerPort: 30010, hostPort: 30010, protocol: TCP }
+      - { containerPort: 30011, hostPort: 30011, protocol: TCP }
+      - { containerPort: 30012, hostPort: 30012, protocol: TCP }
+      - { containerPort: 30013, hostPort: 30013, protocol: TCP }
+      - { containerPort: 30014, hostPort: 30014, protocol: TCP }
+      - { containerPort: 30015, hostPort: 30015, protocol: TCP }
+      - { containerPort: 30016, hostPort: 30016, protocol: TCP }
+      - { containerPort: 30017, hostPort: 30017, protocol: TCP }
+      - { containerPort: 30018, hostPort: 30018, protocol: TCP }
+      - { containerPort: 30019, hostPort: 30019, protocol: TCP }
+      # --- observability UIs 30100-30119 ---
+      - { containerPort: 30100, hostPort: 30100, protocol: TCP }
+      - { containerPort: 30101, hostPort: 30101, protocol: TCP }
+      - { containerPort: 30102, hostPort: 30102, protocol: TCP }
+      - { containerPort: 30103, hostPort: 30103, protocol: TCP }
+      - { containerPort: 30104, hostPort: 30104, protocol: TCP }
+      - { containerPort: 30105, hostPort: 30105, protocol: TCP }
+      - { containerPort: 30106, hostPort: 30106, protocol: TCP }
+      - { containerPort: 30107, hostPort: 30107, protocol: TCP }
+      - { containerPort: 30108, hostPort: 30108, protocol: TCP }
+      - { containerPort: 30109, hostPort: 30109, protocol: TCP }
+      - { containerPort: 30110, hostPort: 30110, protocol: TCP }
+      - { containerPort: 30111, hostPort: 30111, protocol: TCP }
+      - { containerPort: 30112, hostPort: 30112, protocol: TCP }
+      - { containerPort: 30113, hostPort: 30113, protocol: TCP }
+      - { containerPort: 30114, hostPort: 30114, protocol: TCP }
+      - { containerPort: 30115, hostPort: 30115, protocol: TCP }
+      - { containerPort: 30116, hostPort: 30116, protocol: TCP }
+      - { containerPort: 30117, hostPort: 30117, protocol: TCP }
+      - { containerPort: 30118, hostPort: 30118, protocol: TCP }
+      - { containerPort: 30119, hostPort: 30119, protocol: TCP }
+      # --- apps ACTIVE 31000-31019 ---
+      - { containerPort: 31000, hostPort: 31000, protocol: TCP }
+      - { containerPort: 31001, hostPort: 31001, protocol: TCP }
+      - { containerPort: 31002, hostPort: 31002, protocol: TCP }
+      - { containerPort: 31003, hostPort: 31003, protocol: TCP }
+      - { containerPort: 31004, hostPort: 31004, protocol: TCP }
+      - { containerPort: 31005, hostPort: 31005, protocol: TCP }
+      - { containerPort: 31006, hostPort: 31006, protocol: TCP }
+      - { containerPort: 31007, hostPort: 31007, protocol: TCP }
+      - { containerPort: 31008, hostPort: 31008, protocol: TCP }
+      - { containerPort: 31009, hostPort: 31009, protocol: TCP }
+      - { containerPort: 31010, hostPort: 31010, protocol: TCP }
+      - { containerPort: 31011, hostPort: 31011, protocol: TCP }
+      - { containerPort: 31012, hostPort: 31012, protocol: TCP }
+      - { containerPort: 31013, hostPort: 31013, protocol: TCP }
+      - { containerPort: 31014, hostPort: 31014, protocol: TCP }
+      - { containerPort: 31015, hostPort: 31015, protocol: TCP }
+      - { containerPort: 31016, hostPort: 31016, protocol: TCP }
+      - { containerPort: 31017, hostPort: 31017, protocol: TCP }
+      - { containerPort: 31018, hostPort: 31018, protocol: TCP }
+      - { containerPort: 31019, hostPort: 31019, protocol: TCP }
+      # --- apps PREVIEW 31100-31119 ---
+      - { containerPort: 31100, hostPort: 31100, protocol: TCP }
+      - { containerPort: 31101, hostPort: 31101, protocol: TCP }
+      - { containerPort: 31102, hostPort: 31102, protocol: TCP }
+      - { containerPort: 31103, hostPort: 31103, protocol: TCP }
+      - { containerPort: 31104, hostPort: 31104, protocol: TCP }
+      - { containerPort: 31105, hostPort: 31105, protocol: TCP }
+      - { containerPort: 31106, hostPort: 31106, protocol: TCP }
+      - { containerPort: 31107, hostPort: 31107, protocol: TCP }
+      - { containerPort: 31108, hostPort: 31108, protocol: TCP }
+      - { containerPort: 31109, hostPort: 31109, protocol: TCP }
+      - { containerPort: 31110, hostPort: 31110, protocol: TCP }
+      - { containerPort: 31111, hostPort: 31111, protocol: TCP }
+      - { containerPort: 31112, hostPort: 31112, protocol: TCP }
+      - { containerPort: 31113, hostPort: 31113, protocol: TCP }
+      - { containerPort: 31114, hostPort: 31114, protocol: TCP }
+      - { containerPort: 31115, hostPort: 31115, protocol: TCP }
+      - { containerPort: 31116, hostPort: 31116, protocol: TCP }
+      - { containerPort: 31117, hostPort: 31117, protocol: TCP }
+      - { containerPort: 31118, hostPort: 31118, protocol: TCP }
+      - { containerPort: 31119, hostPort: 31119, protocol: TCP }
+      # --- CD / GitOps tools 32000-32019 ---
+      - { containerPort: 32000, hostPort: 32000, protocol: TCP }
+      - { containerPort: 32001, hostPort: 32001, protocol: TCP }
+      - { containerPort: 32002, hostPort: 32002, protocol: TCP }
+      - { containerPort: 32003, hostPort: 32003, protocol: TCP }
+      - { containerPort: 32004, hostPort: 32004, protocol: TCP }
+      - { containerPort: 32005, hostPort: 32005, protocol: TCP }
+      - { containerPort: 32006, hostPort: 32006, protocol: TCP }
+      - { containerPort: 32007, hostPort: 32007, protocol: TCP }
+      - { containerPort: 32008, hostPort: 32008, protocol: TCP }
+      - { containerPort: 32009, hostPort: 32009, protocol: TCP }
+      - { containerPort: 32010, hostPort: 32010, protocol: TCP }
+      - { containerPort: 32011, hostPort: 32011, protocol: TCP }
+      - { containerPort: 32012, hostPort: 32012, protocol: TCP }
+      - { containerPort: 32013, hostPort: 32013, protocol: TCP }
+      - { containerPort: 32014, hostPort: 32014, protocol: TCP }
+      - { containerPort: 32015, hostPort: 32015, protocol: TCP }
+      - { containerPort: 32016, hostPort: 32016, protocol: TCP }
+      - { containerPort: 32017, hostPort: 32017, protocol: TCP }
+      - { containerPort: 32018, hostPort: 32018, protocol: TCP }
+      - { containerPort: 32019, hostPort: 32019, protocol: TCP }
+      # --- security + spare 32100-32119 ---
+      - { containerPort: 32100, hostPort: 32100, protocol: TCP }
+      - { containerPort: 32101, hostPort: 32101, protocol: TCP }
+      - { containerPort: 32102, hostPort: 32102, protocol: TCP }
+      - { containerPort: 32103, hostPort: 32103, protocol: TCP }
+      - { containerPort: 32104, hostPort: 32104, protocol: TCP }
+      - { containerPort: 32105, hostPort: 32105, protocol: TCP }
+      - { containerPort: 32106, hostPort: 32106, protocol: TCP }
+      - { containerPort: 32107, hostPort: 32107, protocol: TCP }
+      - { containerPort: 32108, hostPort: 32108, protocol: TCP }
+      - { containerPort: 32109, hostPort: 32109, protocol: TCP }
+      - { containerPort: 32110, hostPort: 32110, protocol: TCP }
+      - { containerPort: 32111, hostPort: 32111, protocol: TCP }
+      - { containerPort: 32112, hostPort: 32112, protocol: TCP }
+      - { containerPort: 32113, hostPort: 32113, protocol: TCP }
+      - { containerPort: 32114, hostPort: 32114, protocol: TCP }
+      - { containerPort: 32115, hostPort: 32115, protocol: TCP }
+      - { containerPort: 32116, hostPort: 32116, protocol: TCP }
+      - { containerPort: 32117, hostPort: 32117, protocol: TCP }
+      - { containerPort: 32118, hostPort: 32118, protocol: TCP }
+      - { containerPort: 32119, hostPort: 32119, protocol: TCP }
+  # --- 10 workers ---
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab
+  - role: worker
+    image: mirror.gcr.io/kindest/node:v1.35.1@sha256:05d7bcdefbda08b4e038f644c4df690cdac3fba8b06f8289f30e10026720a1ab

@@ -1,0 +1,2500 @@
+##----------------------------------------------------------------------------------------------##
+##----------------------------------------------------------------------------------------------##
+
+YOUTUBE CHANNEL: https://www.youtube.com/@LearnDevOpsEasy
+EMAIL: scmlearningcentre@gmail.com
+
+GITHUB - Create a new repo with yourname
+ - main branch
+ - dev branch
+   foundation/ 
+              assingment1.txt
+              assingment2.txt
+              assingment3.txt
+- Send a email to scmlearningcentre@gmail.com
+
+
+
+ $ git config --global user.name “ADAM M”
+ $ git config --global user.email scmlearningcentre@gmail.com
+ $ git config --global push.default simple
+
+
+$ git clone <Remote-Repo> <Local-Repo>
+  git clone https://github.com/learnwithadam/octnov2026batch workspace01
+$ git status
+$ git add .
+$ git commit -m "first test commit"
+$ git diff <file>
+$ git log --oneline -2
+$ git push
+$ git pull  (git will fetch the metadata & update the workspace)
+
+$ git branch
+$ git branch -a
+$ git checkout <Branch>
+
+$ git merge <source> <dest>
+$ git cherry-pick <CommitID>
+
+MLOPS LIFECYCLE
+===============
+ - Dataset collection (Previous or historic production data)
+ - ML development
+ - Build ML Model (App)
+ - Train the Model 
+ - Evaluate/Test the Model
+ - Deploy the Model (Inference)
+ - Monitor the Model
+
+# Develop
+# Train
+# Test
+# Release
+
+MLOPS Testing Types
+===================
+- Pipeline validation: Dry run on the model to check whether its running, can it take input & give a output. Do we have the ability to train the model. This will be done on a dev environment.
+- Model Validation: Split the dataset into 80%-20%. Train the Model with 80% dataset & use the 20% of dataset to evaluate. This will be done in QA environment.
+   # Is it connecting to dependencies (database, kafka etc), is it able to pull or push data
+- Inference Testing: End-End Application testing to check if Model is working in the Product Ecosystem. You can do Load/Performance tests.
+- Shadow Testing: By passing live production data, check whether your Model is predicting properly.
+
+2 Builds - 1 in Feature branch & other in Main branch (Build Once & Deploy Many)
+
+* Develop - Build the code (Create Model) - Train the Model - Deploy the Model (Env) - Test
+
+DEVOPS LIFECYCLE
+================
+- Develop
+- Test
+- Release
+
+DevOps Testing types
+====================
+- Functional Testing: check/validate the new functionality of the application modified
+- Regression Testing: validate the application existing+new functionality
+- Performance Testing: Load testing
+
+* Develop - Build the code (Create App) - Deploy the App (Env) - Test
+
+DevSecOps Approach
+==================
+ # For Security we do a Shift-Left approach i.e find & fix the vulnerabilities in the development phase (Feature/Dev branch)
+ # 4C's of security
+  - Cloud
+  - Compute
+  - Container
+  - Code
+ 
+--------------------------------------------------------------------------------------------------------------
+Program Languages:
+ - Compiled Language (For every source file, we convert them into object files i.e machine understandable)
+ - Interpreted Language (execute it line by line)
+
+3 Steps in Java Build process:
+  # Compile
+  # Unit Test
+  # Package (.Jar)
+
+Java Build
+==========
+$ sudo apt update
+$ sudo apt install -y git openjdk-17-jdk maven
+$ java --version
+$ mvn --version
+
+$ git clone https://github.com/wezva-fintech/ledger-build.git javabuild 
+$ git checkout feature
+$ mvn clean package -Dmaven.test.skip=true
+
+$ git checkout main
+$ mvn clean package -Dmaven.test.skip=true
+
+Node Build
+==========
+Build Steps:
+ - there is no compilation
+ - unit test using a framework
+ - create a tar/zip with all the necessary *.js/*.html
+
+3 Steps in Node/JS Build process:
+  # Install
+  # Unit Test
+  # Package
+
+$ sudo apt install -y nodejs npm
+$ node -v
+
+# Build & Unit test:
+$ git clone https://github.com/wezva-fintech/notification-build.git nodebuild
+$ git checkout feature
+$ npm install/ci      (download developer modules like unit test, security i.e codecoverage/lint)
+$ npm test
+$ tar -cvf samplenode.tar app.js *html
+
+$ git checkout main
+$ npm install/ci      (download developer modules like unit test, security i.e codecoverage/lint)
+$ npm test
+$ tar -cvf samplenode.tar app.js *html
+
+Deployment
+==========
+ # Copy the app/artifact
+ # Configure the app
+    - DB|UserDB|PasswordDB|Log-Level|Log-file|Certificates|Heap-Memory
+    - Log Files: server.log / access.log / users.log
+    - Log Levels:  INFO, WARN, ERROR, DEBUG, TRACE
+ # Run the app
+
+- Choose the server (based on env)
+- Run prerequisites 
+   - create user
+   - create app folder
+   - install the necessary OS packages or libraries
+- Switch to the necessary user
+- Switch to the necessary folder
+- Copy the app
+- Copy the startup/healthcheck scripts
+- Copy the configuration file
+- Copy the certificates
+- Open the necessary port
+- Run the app (start the script)
+
+
+# Create a Image (Docker) - Preconfigured
+# Deployment is all about creating a container (box) in which you put a copy of the Image & run the application
+ - Creating a container is running a application
+
+$ sudo apt update
+$ sudo apt install -y docker.io
+$ systemctl status docker 
+$ docker info
+$ sudo usermod -a -G docker ubuntu
+
+Image Management
+----------------
+* Create Images frequently
+* Automate the Image creation
+* Faster way of creation
+
+Dockerfile
+==========
+* Special file in which we give the instructions on how to create a Docker Image.
+ - Automates the Image creation on the background
+ - uses existing layer from cache (/var/lib/docker)
+
+Imagename = Reponame:Tagname # default tag is latest
+Image = <Registry>/<ImageName>:<TagName>
+
+INSTRUCTION    COMMAND
+===========    =======
+FROM         <BaseImage>        # image for creating the intermediate container
+RUN          <command>          # instruction to run OS cmd inside the intermediate container
+USER         <USERNAME>                      # sets the default user
+WORKDIR      <PATH>                          # sets the default working dir
+COPY         <SRC> <DEST>                    # copies file from docker host to image
+EXPOSE       <PORT#>
+CMD          ["executable","arg1","arg2"]    # user cmd will override the default cmd
+ENTRYPOINT   ["executable","arg1","arg2"]    # always runs default cmd, user cmd is taken as arguments
+
+
+Example:
+--------
+FROM ubuntu
+RUN apt -y update 
+RUN apt install -y openjdk-17-jdk 
+RUN useradd -m wezvatech
+RUN mkdir /etc/app
+USER wezvatech
+WORKDIR /etc/app
+COPY ./javabuild/target/wezvatech-springboot-mysql-9739110917.jar .
+COPY ./javabuild/startup.sh .
+EXPOSE 8080
+ENTRYPOINT ["./startup.sh"]            ##  CMD ["./startup.sh"]
+
+
+$ docker build -t <ImageName>:<Tagname> . -f <Dockerfile-location> 
+$ docker build -t myimg:b1 .
+
+
+$ docker images
+$ docker run --rm -it myimg:b1
+$ docker logs <containerID>
+
+#!/bin/bash
+echo "Running Startup Script .."
+echo $0 $1 $2
+echo "java -jar test.jar $1 $2"
+
+# In DevOps the output/deliverable of build is a Docker Image 
+* Develop - Build the code (Create App)+Build the Docker Image - Deploy the App (Env) - Test
+
+BUILD STEPS:
+  # Compile
+  # Unit Test
+  # Package (.Jar)
+  # Create Docker Image
+
+
+DOCKER APPLICATION LAYERS
+=========================
+1. OS Layer
+2. Framerwork Layer (JDK/JRE/NPM/NODE/GO/PYTHON SDK)
+3. Application Layer
+4. Script Layer (startup/Stop/Healthcheck)
+
+CONTAINER LAYERS
+================
+1. OS Layer
+2. Framerwork Layer (JDK/JRE/NPM/NODE/GO/PYTHON SDK)
+3. Application Layer
+4. Script Layer (startup/Stop/Healthcheck)
+5. Configuration Layer (Application startup config or property files/ Credentials or secret/ Certificates)
+ - NOTE: The contents of configuration layer will be injected into the container during runtime i.e while creating the container
+
+
+FROM node:16
+WORKDIR /usr/app
+COPY package.json ./
+RUN npm install
+COPY ./src ./src
+COPY ./public ./public
+RUN rm -rf node_modules
+RUN npm ci --only=production
+EXPOSE 3000
+ENTRYPOINT ["node","src/index.js"] 
+
+
+MULTI_STAGE DOCKERFILE
+======================
+Stage 1:
+ - OS
+ - full node 16
+ - app - src & public dir
+ - npm install - node_module/libraries
+
+Stage 2:
+ - minimal OS
+ - node cmd
+ - /usr/app
+      src
+      public
+      node_module
+
+
+RESPONSIBILITIES
+================
+- You already had app & setup build, deployment process
+- You converted the traditional deployment to container
+
+- Recently you adopted modern devops & mlops lifecycle, modern branching strategies, modern code promotion
+- Recently you optimized the Image creation using multi-stage dockerfile, separating configuration layers from App image
+
+
+#- KUBERNETES -#
+   ==========
+
+##- Setup Kind cluster -## (t3.medium + 15 GB HDD)
+    ==================
+ 
+$ sudo apt update
+$ sudo apt install -y docker.io
+$ sudo usermod -a -G docker ubuntu
+
+$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+$ sudo curl -L "https://kind.sigs.k8s.io/dl/v0.20.0/kind-$(uname)-amd64" -o /usr/local/bin/kind && sudo chmod +x /usr/local/bin/kind
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+$ kind create cluster --name wezvatechdev --config=kindcluster.yml
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30000
+    hostPort: 30000
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 30100
+    hostPort: 30100
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+- role: worker
+- role: worker
+
+$ kubectl get nodes
+ # kubectl reads <home-dir>/.kube/config & communicates to the respective cluster
+
+
+Lunch (bag) -> Deployment (POD)
+ food -> container(s)
+ hot/cold
+ spoon/fork
+ tissue/tower
+
+Application Replica (POD)
+ - 1 container (Image, Capacity)
+   volume
+   healthcheck
+   port mapping
+ - 1 container (Image, Capacity)
+   volume
+   healthcheck
+   port mapping
+
+Container = 4GB
+
+Data Plane Machine 1: POD1(Container1), POD2(Container2), POD3(Container3)
+Data Plane Machine 2: POD4(Container4)
+Data Plane Machine 3: POD5(Container5), POD6(Container6)
+
+pod1.yml
+--------
+kind: Pod                         # Object Type
+apiVersion: v1                    # API version
+metadata:                         # Set of data which describes the Object
+  name: testpod                  # Name of the Object
+spec:                             # Data which describes the state of the Object
+  containers:                     # Data which describes the Container details
+    - name: main                   # Name of the Container
+      image: ubuntu              #  Image which is used to create Container
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 8 ; done"]
+
+$ kubectl get pods
+$ kubectl apply -f pod1.yml
+$ kubectl get pods -o wide
+$ kubectl describe pod testpod
+$ kubectl logs -f testpod
+$ kubectl exec testpod -- ps -ef
+$ kubectl exec testpod -it -- /bin/bash
+$ kubectl exec testpod -- env
+
+# Pod only creates & maintains a container in it
+# Pod cannot recreate itself or it cannot scale itself
+
+- STATEFUL APPLICATION: If the application stores its data inside the same container, ex: database
+- STATELESS APPLICATION: If the application stores its data outside the container
+
+Replication Controlling Objects:
+ - It helps pods to replicate/recreate & scale
+
+DEPLOYMENT OBJECT: It helps to recreate, scale & rollback. Its used for stateless application
+
+deploy1.yml
+-----------
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 2
+   selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment
+   template:      # pod template
+     metadata:
+       name: testpod
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: ubuntu                         # ubuntu:22.10
+          command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 5; done"]
+
+$ kubectl get deploy
+$ kubectl get rs
+$ kubectl describe deploy mydeploy
+$ kubectl exec <POD> -- cat /etc/os-release
+$ kubectl rollout status deploy/mydeploy
+$ kubectl rollout history deploy/mydeploy
+$ kubectl rollout undo deploy/mydeploy --to-revision=1
+
+
+deploy2.yml (Resources & Env)
+-----------
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 2
+   selector:      
+    matchLabels:
+     name: deployment
+   template:      # pod template
+     metadata:
+       name: testpod
+       labels:
+         name: deployment
+     spec:
+      nodeSelector:                         # specifies which node to run the pod
+       mynode: demonode
+      containers:
+        - name: main
+          image: ubuntu
+          command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 5; done"]
+          resources:                        # Describes the CPU & RAM needed to run the container
+           requests:
+             memory: "64Mi" 
+             cpu: "100m"       
+           limits:
+             memory: "200Mi" 
+             cpu: "200m"
+          env:                          # List of environment variables to be used inside the pod
+          - name: ORG
+            value: WEZVATECH
+          - name: SESSION
+            value: PODS
+
+$ kubectl label nodes <NODE-NAME> mynode=demonode
+
+Healthchecks
+============
+* livenessprobe
+ - container gets recreated if check fails
+* readinessprobe
+ - doesnt send the traffic to that pod
+
+- What cmd/script to run
+- how frequently to run
+- we should make sure the script is available inside the Image & it returns appropriate return code
+- 0 return indicates container is healthy, non-zero indicates container is not healthy
+
+healthcheck.yml
+---------------
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 1
+   selector:       
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod8
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: httpd
+          ports:
+           - containerPort: 80
+          livenessProbe:                  # define the health check
+           exec:
+             command:                     
+             - ls
+             - /tmp/lp
+           initialDelaySeconds: 30  
+           periodSeconds: 5         
+           timeoutSeconds: 10
+          readinessProbe:                 # define the health check
+           exec:
+            command:     
+            - ls
+            - /tmp/rp
+           initialDelaySeconds: 30  
+           periodSeconds: 5    
+           timeoutSeconds: 30
+
+
+POD1:
+  main container - App image
+  supporting container - support app image
+
+POD2:
+  main container - App image
+  supporting container - support app image
+
+Container Pattern:
+1. A type of container which gets created first before the main container i.e init container
+  - check with db is up & running
+  - connect to db & fetch some details or put some details
+  - download a file or read another application
+2. A type of container which runs along with the main container i.e sidecar container
+  - update some credentials
+  - control traffic
+
+deploy3.yml 
+-----------
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 1
+   selector:      
+    matchLabels:
+     name: deployment
+   template:      # pod template
+     metadata:
+       name: testpod
+       labels:
+         name: deployment
+     spec:
+      initContainers:
+      - name: init
+        image: ubuntu
+        command: ["/bin/sh", "-c", "echo WEZVATECH-KUBERNETES > /tmp/xchange/testfile; sleep 30"]
+        volumeMounts:        
+        - name: xchange
+          mountPath: "/tmp/xchange" 
+      containers:
+      - name: main
+        image: ubuntu
+        command: ["/bin/bash", "-c", "while true; do echo `cat /tmp/data/testfile`; sleep 5; done"]
+        volumeMounts:
+        - name: xchange
+          mountPath: "/tmp/data"
+      - name: sidecar                              # Sidecar container #
+        image: httpd
+        ports:
+          - containerPort: 80
+      volumes:                            
+      - name: xchange
+        emptyDir: {}
+
+
+$ curl <podIP>:80
+
+$ kubectl logs -f testpod -c main
+$ kubectl logs -f testpod -c sidecar
+$ kubectl exec testpod -c main -it -- /bin/bash
+
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: myebsvol
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  awsElasticBlockStore:
+    volumeID: vol-00346b48f8947f458
+    fsType: ext4
+
+$ kubectl get pv
+$ kubectl describe pv myebsvol
+
+----------------------------pvc.yml-------
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: myebsvolclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+$ kubectl get pvc
+$ kubectl describe pvc myebsvolclaim
+
+---------------------------------------deploypv.yml----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pvdeploy
+spec:
+  replicas: 1
+  selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     app: mypv
+  template:
+    metadata:
+      labels:
+        app: mypv
+    spec:
+      containers:
+      - name: main
+        image: ubuntu
+        command: ["/bin/bash", "-c", "sleep 10000"]
+        volumeMounts:
+        - name: mypv
+          mountPath: "/tmp/persistent"
+      volumes:
+        - name: mypv
+          persistentVolumeClaim:
+            claimName: myebsvolclaim
+
+
+Virtual Memory
+============
+* Configmap - application configuration files (kafka, cache server, db host, db-user, db-table, log level, heap memory)
+* Secret - for any sensitive data, certificates (keystores, password, certificates)
+ - Size of the object should be <= 1 MB
+
+$ kubectl create configmap mymap --from-file=sample.conf
+$ kubectl get cm
+$ kubectl describe configmaps mymap
+$ kubectl get configmap mymap -o yaml
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 1
+   selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod8
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: ubuntu
+          command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 5; done"]
+          volumeMounts:
+          - name: appconfig
+            mountPath: "/tmp/config"    
+      volumes:
+      - name: appconfig
+        configMap:
+         name: mymap   # this should match the config map name created in the first step
+         items:
+         - key: sample.conf # the name of the file used during creating the map
+           path: sample.conf
+
+$ touch certificate; echo "YOUCANSEEME" > password.txt
+$ kubectl create secret generic mypasswd --from-file=password.txt 
+$ kubectl create secret generic mycert --from-file=certificate
+$ kubectl get secret
+$ kubectl describe secret mycert
+
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 1
+   selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod8
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: ubuntu
+          command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 5; done"]
+          volumeMounts:
+          - name: passwdsecret
+            mountPath: "/tmp/passwd"   # the secret files will be mounted as ReadOnly by default here
+          - name: certificate
+            mountPath: "/tmp/certs"   # the secret files will be mounted as ReadOnly by default here
+      volumes:
+      - name: passwdsecret
+        secret:
+         secretName: mypasswd  
+      - name: certificate
+        secret:
+         secretName: mycert
+
+
+----------II Method-------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myenvsecret
+spec:
+  containers:
+  - name: main
+    image: ubuntu
+    command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 5 ; done"]
+    env:
+    - name: MYDBPASSWD          # env name in which value of the key is stored
+      valueFrom:
+        secretKeyRef:
+          name: mypasswd       # name of the secret created
+          key: password.txt    # name of the key
+
+
+SERVICES
+=========
+* used for accessing the application without worrying about changing POD IP's
+* load balances the traffic
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 2
+   selector:               # tells the controller which pods to watch/belong to
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod8
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: httpd
+          ports:
+           - containerPort: 80
+
+------------------Service--------------------
+kind: Service                             # Defines to create Service type Object
+apiVersion: v1
+metadata:
+  name: demoservice
+spec:
+  ports:
+    - port: 80                           # service port exposed
+      targetPort: 80                     # Pods port
+  selector:
+    name: deployment    # Apply this service to any pods which has the specific label
+  type: ClusterIP  
+
+- Test another testpod
+$ kubectl apply -f pod1.yml
+
+$ kubectl exec testpod -it -- /bin/bash
+  - apt update && apt install -y curl
+  - curl <serviceIP>:80
+
+---------------------
+kind: Service # Defines to create Service type Object
+apiVersion: v1
+metadata:
+  name: demoservice
+spec:
+  ports:
+    - port: 80 # service port exposed
+      targetPort: 80 # Pods port
+      nodePort: 30000 # Manually mapped NodePort
+  selector:
+    name: deployment # Apply this service to any pods which has the specific label
+  type: NodePort
+# 30000 - 32767
+
+container -> pod:80 -> service(clusterIP):80 -> K8s-worker-Node:30000 -> Loadbalancer
+
+$ curl localhost:30000
+$ kubectl exec mydeploy-5858c7658d-qpmsg -it -- /bin/bash
+   -  echo "I AM POD1" > ./htdocs/index.html
+
+Daemonset - for running 3rd party administration applications/pods like logging, monitoring, networking, security ex: Prometheus, fluentd, logstash, calico, falco
+
+daemonset.yml
+-------------
+kind: DaemonSet            # Type of Object
+apiVersion: apps/v1
+metadata:
+  name: demodaemonset
+spec:
+  selector:
+    matchLabels:
+      env: demo
+  template:
+    metadata:
+      labels:
+        env: demo
+    spec:
+      containers:
+      - name: demonset
+        image: ubuntu
+        command: ["/bin/bash", "-c", "while true; do echo Hello-Adam; sleep 8 ; done"]
+
+
+DEPLOYMENT OBJECT: FOR STATELESS APPLICATION
+DAEMONSET OBJECT: MAINLY FOR ADMINISTRATITION TOOLS WHICH NEEDS TO RUN 1 REPLICA ON EVERY WORKER NODE
+STATEFULSET OBJECT: FOR STATEFUL APPLICATION
+
+
+NAMESPACE: We can control the object & group the objects
+ - Network (inbound/outbound) policies
+ - Resource policies (how many pods/deployment/cm/secret/service, total resource)
+ - User policies (RBAC, Service Account)
+
+apiVersion: v1
+kind: Namespace
+metadata:
+   name: demo
+   labels:
+     name: development
+
+$ kubectl get ns
+$ kubectl get pods -n demo
+
+TAINT
+=====
+$ kubectl taint nodes <nodename> <key>=<value>:<effect>
+$ kubectl taint nodes <nodename> taint=true:NoSchedule
+$ kubectl describe node <nodename> | grep -i Taint
+  To remove taint:
+$ kubectl taint nodes <nodename> taint=true:NoSchedule-
+
+# Taint is a property for node to not allow any pods
+# Toleration is a property for a pod to run on a particular tainted node
+
+taint.yaml
+----------
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeploy
+spec:
+   replicas: 1
+   selector:               
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod8
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: main
+          image: httpd
+      tolerations:
+      - key: "taint"
+        value: "true"
+        effect: "NoSchedule"
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-affinity-hard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: myname
+                operator: In
+                values:
+                - nodeaffinity
+
+$ kubectl label nodes <node> myname=nodeaffinity
+$ kubectl label nodes <node> myname-
+
+KUBERNETES TEMPLATE FOR DEPLOYMENT (Minimal)
+==================================
+- Namespace: to group your app, policies
+- Deployment: ability to scale, recreate, rollback
+- Pod
+  # Container pattern
+   # Image
+   # startup cmd
+   # resources
+   # healthcheck
+   # env variable
+   # port mapping
+  # toleration
+  # node affinity
+  # volume
+- Configmap
+- Secret
+- Service
+
+
+Terraform Core - t3.medium with 30 GB
+==============
+Install through Package:
+$ sudo apt update && sudo apt install -y gnupg software-properties-common curl
+$ curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+$ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+$ sudo apt update && sudo apt install -y terraform
+
+------------------TERRAFORM AWS SETUP----------
+# Create ~/.aws/credentials file
+
+[default]
+aws_access_key_id = <YOUR_ACCESS_KEY_ID>
+aws_secret_access_key = <YOUR_SECRET_ACCESS_KEY>
+
+
+HCL
+===
+ - HCL(Hashicorp Language)/ *.tf
+ - blocks { }
+ - every block will have a type & a name
+ - every statement should be in a key = value format
+
+   provider block
+ ------------------
+   Syntax:
+   provider "providername" {
+     key = value
+   }
+
+   resource block
+ -------------------
+   Syntax:
+   resource "provider_resourcetype" "name" {
+      key = value
+   }
+
+$ mkdir basics
+$ cd basics
+$ vi main.tf
+
+# Specify the Provider details
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Specify the EC2 details
+resource "aws_instance" "example" {
+  ami           = "ami-0c7632fb77f35db43"
+  instance_type = "t2.micro"
+}
+
+resource "aws_eip" "ip" {
+  instance = aws_instance.example.id
+}
+
+# Create S3 bucket
+resource "aws_s3_bucket" "example" {
+  bucket = "wezvatech-adam-blr-s3-oct2026"
+}
+
+Terraform workflow:
+$ terraform init
+$ terraform validate
+$ terraform plan -var "type=t2.micro" -out planfile
+$ terraform plan -var-file="demo.tfvars" -out planfile
+       # type = "t2.large"
+       # amiid = "ami-0c7632fb77f35db23"
+$ terraform apply -auto-approve
+  terraform apply planfile
+$ terraform show
+$ terraform destroy (or)
+  $ terraform plan -var-file="demo.tfvars" -out destroyfile -destroy
+  $ terraform apply destroyfile
+
+
+$ vi variables.tf
+# Define variables
+variable "amiid" {
+  default = "ami-0c7632fb77f35db43"
+}
+
+variable "type" {
+  default = "t2.micro"
+}
+
+main.tf
+-------
+# Specify the Provider details
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Specify the EC2 details
+resource "aws_instance" "example" {
+  ami           = var.amiid
+  instance_type = var.type
+}
+
+INTERPOLATION: RESOURCETYPE.RESOURCENAME.ATTRIBUTES
+
+Dependency
+----------
+# Specify the Provider details
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Explicit Dependency
+resource "aws_instance" "example" {
+  ami           = "ami-0c7632fb77f35db43"
+  instance_type = "t2.micro"
+
+  depends_on = [aws_s3_bucket.example]
+}
+
+# Implicit Dependency
+resource "aws_eip" "ip" {
+  instance = aws_instance.example.id
+}
+
+resource "aws_s3_bucket" "example" {
+  bucket = "wezvatech-adam-blr-s3-oct2026"
+}
+
+Backend.tf
+----------
+# Specify the Backend details
+terraform {
+  backend "s3" {
+    bucket         = "wezvatech-nov-2026-tfstate"
+    key            = "demo/demo.tfstate"
+    region         = "ap-south-1"
+    encrypt        = true
+    
+    # Enable new native locking
+    use_lockfile   = true 
+
+  }
+}
+
+data block
+----------
+
+# Configure the AWS Provider
+provider "aws" {
+  region = "ap-south-1" 
+}
+
+# Fetch the latest Ubuntu 26.04 LTS AMI
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical's official AWS account ID
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-resolute-26.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# Provision the EC2 Instance
+resource "aws_instance" "web_server" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = "t3.micro"
+
+  tags = {
+    Name = "Ubuntu-26-Server"
+  }
+}
+
+Import
+------
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Specify the EC2 details
+resource "aws_instance" "example1" {
+  ami           = "ami-0c7632fb77f35db43"
+  instance_type = "t2.micro"
+}
+
+resource "aws_instance" "example2" {
+  ami           = "ami-0c7632fb77f35db43"
+  instance_type = "t2.micro"
+}
+
+$ terraform import aws_instance.example2 i-04828223b3509f4aa
+
+MODULES: Resuable code
+=======
+
+Instance module
+---------------
+$ mkdir -p modules/instance
+$ vi main.tf
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_instance" "example" {
+  ami           = var.amiid
+  instance_type = var.type
+}
+
+$ vi variables.tf
+variable "amiid" {
+  default = "ami-0c7632fb77f35db43"
+}
+
+variable "type" {
+  default = "t2.micro"
+}
+
+$ vi output.tf
+output "instanceid" {
+  value = aws_instance.example.id
+}
+    
+    # terraform plan -var "amiid=VALUE" -var "type=VALUE" 
+
+EIP module
+----------
+$ mkdir -p modules/eip
+$ vi main.tf
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_eip" "ip" {
+  instance = var.instanceid
+}
+
+$ vi variables.tf
+
+variable "instanceid" {
+}
+
+   # terraform plan -var "instanceid=VALUE"
+
+---Root Project---
+$ cd rootproj
+$ vi main.tf
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+module "instance" {
+  source = "../modules/instance"
+  amiid = var.instance_amiid
+  type = var.instance_type
+}
+
+module "eip" {
+   source = "../modules/eip"
+   instanceid = module.instance.instanceid
+}
+
+$ vi variables.tf
+variable "instance_amiid" {
+  default = "ami-006d3995d3a6b963b"
+}
+
+variable "instance_type" {
+  default = "t2.micro"
+}
+
+
+Files in Terraform:
+- versions.tf: has info on version of terraform or provider to use
+- backend.tf: has info on remote state file location & state lock location
+- *.tfvars: have the runtime values for your variables
+
+- main.tf: has info on providers, resources, data
+- variables.tf: has info on user variables
+- output.tf: has info on output variables
+
+Built-In functions : functionname(values)
+==================
+$ terraform console
+max(1,31,12)
+upper("hello")
+split("a", "tomato")
+substr("hello world", 1, 4)
+index(["a", "b", "c"], "b")
+length("adam")
+length(["ab", "bc"])
+lookup({a="1", b="2"}, "a", "novalue")
+
+
+Loop
+====
+provider "aws" {
+  region = "ap-south-1"
+}
+
+variable "user_names" {
+  description = "Create IAM users with these names"
+  type        = list(string)
+  default     = ["shiva","james","kim"]
+}
+
+resource "aws_iam_user" "example" {
+  count = length(var.user_names)
+  name  = var.user_names[count.index] 
+}
+
+resource "aws_instance" "example" {
+  count = 0
+  ami           = "ami-0c7632fb77f35db43"
+  instance_type = "t2.micro"
+}
+
+
+count = 3
+ index = 0
+ name = var.user_names[0] =shiva
+
+ index = 1
+ name = var.user_name[1] = james
+
+ index = 2
+ name = var.user_name[2] = kim
+
+
+NULL RESOURCE
+-------------
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "null_resource" "dummy" {
+  provisioner "local-exec" {
+    command = "touch MYFILE"
+  }
+}
+
+
+If you a resource to be recreated multiple times then - count loop
+If you want 1 resource & that 1 resource has multiple properties i.e a subnet or a security group with multiple input/output rules - dynamic block, its a child block of count loop
+
+
+## ---------------------------------- ##
+## MODULE 2 - ENTERPRISE ARCHITECTURE ##
+## ---------------------------------- ##
+
+FINTECH (B2B) Microservices Architecture
+========================================
+ledger service  - (Java)              
+payment         - (Golang) 
+fraud           - (Python)       
+notification    - (Node.js)     
+bff             - (Node.JS)
+Dashboard/Checkout UI - (React/Vue.js)    
+
+1. Merchant Dashboard: The business owner’s control panel for checking daily sales, refunds, and "Settle" (payout) status.
+2. Checkout UI: The "Digital Cashier" that pops up inside apps like Zomato to collect card or UPI details safely.
+3. BFF (Backend for Frontend): The BFF acts as a single personal assistant that bundles messy backend data for faster screen loading and securely forwards checkout clicks directly to core payment services to process the money.
+4. Ledger Service: The "Master Accountant" that maintains a permanent, immutable record of every transaction to ensure no money goes missing. 
+5. Payment Gateway: The "Bank Runner" that carries encrypted card details to the big banks to move the actual money..
+6. Fraud Detection Service: The "Detective" that analyzes patterns in real-time to block suspicious or impossible transactions
+7. Notification Service: The "Postman" that delivers the "Payment Successful" SMS, WhatsApp, or push alert.
+
+8. Why these specific Databases?
+ ## - Ledger & Payment requires ACID Compliance - ##
+      ------------------------------------------
+  a. Atomicity (All or Nothing) - Without it if the system crashes halfway, the money might leave your account but never reach your friend. Ensure whole transaction rolls back.
+  b. Consistency (Following the Rules) - If your account balance cannot be negative, the database will automatically reject a payment that would take you below zero.
+  c. Isolation (No Double-Counting) - If you have ₹1000 and try to buy two different items worth ₹600 at the exact same millisecond, the database processes them one by one. It won't let both go through just because they happened at the same time.
+  d. Durability (The Permanent Ink) - Once you see "Payment Successful," that record is written to the hard drive (not just the temporary memory/RAM), so it’s there when the system reboots.
+
+DATABASES:
+=========
+# MySQL - 2 db's
+# MongoDB - 2 db's
+# Valkey - 2 server
+
+# Frontend services are static & doesn't do any heavy lifting of the business logic and it just needs a browser to run or show information - so we do not need to deploy them as containers and we use CDN (Content Delivery network) to deploy frontend
+# Backend core services needs to be deployed as containers
+
+  #- Terraform Best Practise -#
+     =======================
+# 1 S3 bucket for each app team (including all the env's)
+# Multi statefile for every env (based on modules)
+# Use S3 Native Locking i.e .tflock file alongside the statefile under s3 (eliminate dynamodb)
+ 
+
+  #- Enterprise-Grade Approach for Terraform Structure -#
+     =================================================
+## -- Managed by Platform Team -- ##  
+|- modules/ (20-30 module)
+|   |- networking
+|   |- security
+|   |- container
+|   |- database
+|   |- user
+|   |- storage
+|   |- loadbalancer
+
+## -- For each App Team or Client, Managed by respective App teams -- ##
+│
+├── environments/ 
+│   ├── qa/
+│   │   ├── networking/          (state: s3://team/qa/network.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── network.tfvars
+│   │   │   ├── main.tf (call network module)
+│   │   │   ├── variables.tf
+│   │   ├── container/           (state: s3://team/qa/container.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── container.tfvars
+│   │   │   ├── main.tf (call k8s module)
+│   │   │   ├── variables.tf
+│   │   ├── database/            (state: s3://team/qa/database.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── database.tfvars
+│   │   │   ├── main.tf (call specific db module)	
+│   │   │   ├── variables.tf
+│   ├── stage/
+│   │   ├── networking/          (state: s3://team/stage/network.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── network.tfvars
+│   │   ├── container/           (state: s3://team/stage/container.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── container.tfvars
+│   │   ├── database/            (state: s3://team/stage/database.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── database.tfvars
+│   ├── production/
+│   │   ├── networking/          (state: s3://team/prod/network.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── network.tfvars
+│   │   ├── container/           (state: s3://team/prod/container.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── container.tfvars
+│   │   ├── database/            (state: s3://team/prod/database.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── database.tfvars
+
+│   ├── production-us-east1
+│   │   ├── networking/          (state: s3://team/prod-us-east1/network.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── network.tfvars
+│   │   ├── container/           (state: s3://team/prod-us-east1/container.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── container.tfvars
+│   │   ├── database/            (state: s3://team/prod-us-east1/database.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── database.tfvars
+
+│   ├── production-us-east2
+│   │   ├── networking/          (state: s3://team/prod-us-east2/network.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── network.tfvars
+│   │   ├── container/           (state: s3://team/prod-us-east2/container.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── container.tfvars
+│   │   ├── database/            (state: s3://team/prod-us-east2/database.tfstate)
+│   │   │   ├── backend.tf
+│   │   │   ├── database.tfvars
+
+
+S3 bucket properties:
+ - Version enabled for backup
+ - apply IAM policies
+ - lifecycle policy (purge/deletion)
+
+[PREREQ STEP] ##- Create a s3 bucket with version enabled for remotestate files -##
+                  -----------------------------------------------------------
+
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd s3 
+  - Update main.tf with the required bucket name
+  $ terraform init
+  $ terraform plan 
+  $ terraform apply -auto-approve
+  $ terraform destroy --auto-approve
+
+
+# Assignment - modify the s3 module to enable the versioning or lifecycle policy only when a user wants
+# Pipeline is a automation process in which we run series of steps on a particular server
+
+checkin to dev branch:
+ 1. go to terraform dev server
+ 2. git clone repo 
+ 3. checkout dev branch
+ 4. run terraform to verify
+ 5. scan the terraform code 
+ 
+#- RESPONSIBILITIES -#
+   ================
+ # Develop IAC Terraform modules to provision infra AWS
+ # Setup CI pipeline for implementing DevSecOps against our Terraform code
+ # Setup a AIOps pipeline for automated code remediation when a PR is raised
+    - Collaborate with Infosec (Security team) to set guardrails
+
+GitHub Actions: Its a pipeline(workflow) which helps us to automate & run the tasks
+  - where to run (runner)
+     1. dedicated server
+     2. SAAS runner
+  - when to run
+  - what to run
+
+GitHub pipeline -> Jobs -> Steps
+
+#- Input to Gen AI to create a pipeline code -#
+   -----------------------------------------
+Need a github action pipeline for a IAC devsecops activity
+1. need this pipeline to run only on dev branch i.e any dev branch in this repo
+2. trigger the pipeline only when a commit is pushed to dev branch
+3. need steps to use ubuntu runner 
+4. i need to use checkov for the SCA scan
+5. this is my repo https://github.com/wezva-fintech/terraform-modules.git
+6. this pipeline will be used to do the following steps
+  - install git, terraform, checkov
+  - terraform init, terraform plan 
+  - run checkov, ignore errors
+  - terraform apply & destroy
+7. need to take the aws creds from environment variables
+
+#- Input to GenAI to create a AIOps pipeline code -#
+   ----------------------------------------------
+Problem statement: need a GitHub action pipeline to run a PR validation for my IAC & do automated code remediation using kiro
+1. need the pipeline to trigger when a PR request is raised from dev to main branch
+2. use ubuntu runner
+3. install all the necessary tools or plugins like git, terraform, checkov & kiro
+4. i will be using kiro headless method to do automated code remediation
+5. i also want the code to be pushed back to my dev branch if kiro has found check scan failures & fixed the code
+6. i then want to update the PR with the modified code
+7. once again verify by scanning the code if kiro has fixed it properly
+
+
+## ----------------------------------- ##
+## MODULE 3 - SETUP AWS INFRASTRUCTURE ##
+## ----------------------------------- ##
+
+[STEP 0] ##- Setup IAC Pipeline to enable DevSecOps for dev branch -##
+             -----------------------------------------------------
+(Repo: https://github.com/wezva-fintech/terraform-modules.git)
+
+# Add AWS creds for pipeline to run terraform for each GitHub repo of terraform
+  Settings → Secrets and variables → Actions → New repository secret
+  - Name as "AWS_ACCESS_KEY_ID" and Secret your <ACCESS_KEY>
+  - Name as "AWS_SECRET_ACCESS_KEY" and Secret your <SECRET_ACCESS_KEY>
+
+[STEP 1] ##- Create IAM Roles for all Environments for the product/app teams -##
+             ---------------------------------------------------------------
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd iam/environments/product-ops-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out platformiamplan
+  $ terraform apply platformiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-dev-qa-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out qaiamplan
+  $ terraform apply qaiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-uat-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out uatiamplan
+  $ terraform apply uatiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-prod-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out prodiamplan
+  $ terraform apply prodiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+
+Root-workspace -> iam/environments/product-prod-account
+                  -> Calls IAM Modules -> Calls opens source module from terraform registry
+                                           Creating role + attaching policy
+
+# As DevOps/Platform Engineers, when we run terraform to create actual Infra
+  - For QA Environment, we take the code from Main branch & assume the QA role
+  - For Production Environment, we take the code from Main branch & assume the Prod role
+
+provider "aws" {
+  region = "ap-south-1"
+
+  assume_role {
+    # The exact ARN of the role you want Terraform to assume in Production
+    role_arn     = "arn:aws:iam::111122223333:role/my-restricted-prod-role"
+    session_name = "TerraformDeploymentProd"
+  }
+}
+
+provider "aws" {
+  region = "ap-south-1"
+
+  assume_role {
+    # The exact ARN of the role you want Terraform to assume in QA
+    role_arn     = "arn:aws:iam::111122223333:role/my-restricted-prod-role"
+    session_name = "TerraformDeploymentProd"
+  }
+}
+
+
+Machine - subnet (az specific) - network (region specific)
+ 1 Region (Mumbai) - has 3 availability zone (datacentre)
+
+VPC - Internetgateway, Routetable, Subnet, Securitygroups, NAT Gateway, VPC Endpoint
+
+
+[STEP 1] ##- Create IAM Roles for all Environments for the product/app teams -##
+             ---------------------------------------------------------------
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd iam/environments/product-ops-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out platformiamplan
+  $ terraform apply platformiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-dev-qa-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out qaiamplan
+  $ terraform apply qaiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-uat-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out uatiamplan
+  $ terraform apply uatiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+$ cd iam/environments/product-prod-account
+  $ terraform init
+  $ terraform plan -var "account_id=640351538280" -out prodiamplan
+  $ terraform apply prodiamplan
+  $ terraform destroy -var "account_id=640351538280" --auto-approve
+
+
+[STEP 2] ##- Create Network (VPC, Subnet, Endpoints, Gateways) -##
+             -------------------------------------------------
+- Security
+- Traffic Isolation
+- Compliance
+
+    Network Setup : 4 VPC's, 24 Subnets (6 public subnets, 18 private subnets)
+    =============
+ VPC     | Public Subnets | Private Subnets |  Key Resources
+A (Edge)         0              3             3 private for API gateway
+B (App)          3              6             3 public for ALB/NAT gateway, 3 private for control plane, 3 private for data plane
+C (Data)         0              6             3 private for Databases (MySQL, MongDB, Valkey), 3 private for Kafka & Opensearch
+D (Ops)          3              3             3 private for (Prometheus, Grafana, Vault, Mlflow), 3 public subnets for NAT gateway (reach external services like email, slack, alerts)
+
+# Apps in VPC B will use NAT gateway to communicate with 3rd party Payment gateways
+# Monitoring tools in VPC D will use NAT gateway to communicate with alerting tools to send mails, notifications
+# We need 3 subnets to run any resource/service for High Availability
+# We need VPC Endpoint to allow access to the AWS services within a region to the private subnet
+
+# Totally 5 networks i.e QA, Stage, Prod (3 regions)
+
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd network
+  $ terraform init
+  $ terraform plan -out 4vpcplan
+  $ terraform apply 4vpcplan
+  $ terraform destroy --auto-approve
+
+
+[STEP 3] ##- Create ECR Repos -##
+             ----------------
+# 3 Base Image i.e Java, Node, Golang
+# 4 Application Image i.e Ledger, Payment, Notification, BFF
+
+$ git clone clone https://github.com/wezva-fintech/terraform-modules.git
+$ cd ecr
+  $ terraform init
+  $ terraform plan -out ecrplan
+  $ terraform apply ecrplan
+
+
+[STEP 4] ##- Create S3 buckets -##
+             -----------------
+
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd s3 
+  - Update main.tf with the required bucket names
+  $ terraform init
+  $ terraform plan -out s3plan
+  $ terraform apply s3plan
+  $ terraform destroy --auto-approve
+
+[STEP 4] ##- Enable Data Governance & Audit -##
+             ------------------------------
+# Use AWS Comprehend to scan the collected dataset before we store into Data lake on need basis
+# Use AWS Maice to scan your entire account periodically
+
+ # - Data Compliance and Infrastructure Guardrail - #
+     ============================================
+$ cd macie-compliance
+$ terraform init
+$ terraform plan -var="security_team_email=scmlearningcentre@gmail.com" -out maiceplan
+$ terraform apply maiceplan
+$ terraform destroy --auto-approve
+
+[Macie Finds PII] ──► [Generates Finding] ──► [EventBridge Catches It] ──► [SNS Topic Fires] ──► [CloudWatch to send Email Lands in Inbox]
+
+ # - AIOps Data Governance & Real-Time PII Redaction - #
+     ===============================================
+$ cd comprehend-PII-gateway
+$ terraform init
+$ terraform plan -var="raw_ingestion_bucket_id=wezvatech-nov-dvc-data-lake" -out piiplan
+$ terraform apply piiplan
+$ terraform destroy --auto-approve
+
+
+Install AWS Cli:
+ $ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+ $ sudo apt install unzip && unzip awscliv2.zip
+ $ sudo ./aws/install --bin-dir /usr/bin --install-dir /usr/bin/aws-cli --update
+ $ aws --version
+
+Test:
+$ aws s3 cp pii_test.csv s3://wezvatech-nov-dvc-data-lake/pii_test.csv
+- CloudWatch -> Logs -> Log Management -> Log groups -> /aws/lambda/production-central-pii-gateway-worker
+- Download the pii_test.csv from wezvatech-dvc-data-lake S3 and verify the data.
+
+INFO:
+- Both Maice/Comprehend engines use the same underlying AWS machine learning models to detect sensitive information.
+  Personal Data: Full Names, Mailing Addresses, Phone Numbers, Email Addresses.
+  Financial Data: Credit Card Numbers, Bank Account Details, Routing Numbers.
+  National Identifiers: US Social Security Numbers (SSN), India Aadhaar Cards, Permanent Account Numbers (PAN).
+  Credentials: AWS Access Keys, Secret Tokens, Private Encryption Keys.
+
+- Amazon Comprehend is AIOps applied to Data Ingestion (Real-Time Inline Cleansing) i.e handles real-time inline data
+- AWS Macie is AIOps applied to Infrastructure Security (Continuous Account-Wide Scanning and Auditing), which provides intelligent cloud operations, compliance monitoring, and automated threat discovery.
+
+1. AWS Macie tells you Where the PII is inside the Cloud (trigger Macie whenever you want/daily, but only as a complete bucket scan)
+Macie generates a Finding Report. It tells you: "Inside bucket X, in file Y, on line 42, I found an Email Address." It does not give you the actual email text string. Your Lambda function must use that path metadata to open the file and scrub that specific line.
+
+2. Amazon Comprehend tells you What the PII text actually is (event-driven, object-level scanning)
+Comprehend scans the raw text string directly in memory and gives you precise character offsets. It tells you: "I found an EmailAddress starting at character 150 and ending at character 174, and the text string is user@email.com." This makes writing redactions simple, as you can replace those exact string indexes in memory instantly.
+
+# - Operational Security and Infrastructure Governance - #
+     ==================================================
+$ cd audit
+$ terraform init
+$ terraform plan -var="environment=wezvatech-demo" -out auditplan
+$ terraform apply auditplan
+$ terraform destroy --auto-approve
+
+Test:
+  #- Trigger an AWS Config Compliance Failure -#
+ IAM -> user -> Create user -> unsecured-lab-developer
+ AWS Config -> Rules -> You should see "iam-user-mfa-enabled-check"
+
+  #- Simulate an Ingress Threat Event in GuardDuty -#
+$ aws guardduty list-detectors --query "DetectorIds[0]" --output text
+$ aws guardduty create-sample-findings --detector-id <DETECTOR_ID> --finding-types "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom"
+
+
+ AWS GuardDuty -> Total findings -> "Sample: The EC2 instance i-99999999 is communicating with an IP address on a custom threat list."
+
+  #-  Perform SRE Forensic Analysis via CloudTrail -#
+$  CloudTrail -> Event history -> Lookup attributes = "Event name: and CreateUser in the next box"
+
+  #- Check the S3 bucket with the name wezvatech-sec-logs-<accountID> -#
+
+
+   # Amazon GuardDuty: Continuously monitors for malicious activity and unauthorized behavior across your accounts
+   # AWS CloudTrail: Audits and records every API call made in your environment for forensic and compliance tracking
+   # AWS Config: Continuously checks your infrastructure to ensure you never violate financial regulations like PCI-DSS or SOC2
+
+   # Amazon Macie: Uses machine learning to discover, classify, and protect sensitive data (like PII, financial records, and credentials) stored across Amazon S3 buckets.
+  # Amazon Comprehend: Uses natural language processing (NLP) and machine learning to analyze unstructured text data (like customer emails, chat transcripts, or support tickets) to automatically extract insights, detect sentiment, and categorize entities.
+
+   # AWS Shield: Provides managed DDoS protection for your applications 
+   # AWS WAF (Web Application Firewall): Protects web applications from common exploits like SQL injection and cross-site scripting
+
+## --------------------------------------- ##
+## MODULE 4 - SETUP ENTERPRISE KUBERNETES  ##
+## --------------------------------------- ##
+
+
+ #- System Design Requirements -#
+   ===========================
+1. High Availability
+2. Autoscaling: Automatically scale up or down the dataplane nodes (Horizontal)
+3. Disaster Recovery: Recover your service/app without loss of data
+4. Upgrade: Zero downtime (Vertical)
+5. Observability (MELT)
+6. Zero Trust
+
+# INFO: In EKS: we can have max of 30 Node groups & 450 nodes per Node group i.e 13,500 total nodes
+
+
+## - Install Kubectl, Helm  & AWS cli on Terraform server - ##
+$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+$ kubectl version
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+Install AWS Cli:
+ $ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+ $ sudo apt install unzip && unzip awscliv2.zip
+ $ sudo ./aws/install --bin-dir /usr/bin --install-dir /usr/bin/aws-cli --update
+ $ aws --version
+
+EKS:
+ - Managed service: EKS takes care of Control plane & we take care of Data plane
+ - Serverless (Auto Mode): Eks takes care of both control & data plane
+
+ - Node group1:
+    # Min servers
+    # Max servers
+    # Policy on when to automatically scale up/down
+    # Server type
+    # In which Subnets to run (i.e 3 private subnets for H.A)
+
+ASG - it has ability to scale only on a % usage of CPU/RAM
+
+## - Create EKS cluster - ##
+     =================
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+$ cd eks
+  $ terraform init
+  $ terraform plan -var="eksversion=1.34" -var="caversion=v1.34.4" -out eks1.34
+  $ terraform apply eks1.34
+
+  # - Check if ClusterAutoscaler is enabled & running - #
+  $ kubectl get pods -l app.kubernetes.io/name=aws-cluster-autoscaler -n kube-system
+
+  $ terraform destroy --auto-approve
+
+  #- Test Autoscaling using Cluster Autoscaler -#
+      =========================================
+$ kubectl apply -f testapp.yml
+$ kubectl get pods --watch
+$ kubectl get nodes --watch
+
+ # - Cluster Backup using Velero - #
+     ===========================
+$ wget https://github.com/vmware-tanzu/velero/releases/download/v1.16.0/velero-v1.16.0-linux-amd64.tar.gz
+$ tar zxvf velero-v1.16.0-linux-amd64.tar.gz
+$ sudo mv velero-v1.16.0-linux-amd64/velero /usr/local/bin/velero
+
+ # - Install velero on EKS - #
+ # Create the S3 bucket first & update the bucket name accordingly #
+
+$  velero install \
+    --provider aws \
+    --plugins velero/velero-plugin-for-aws:v1.10.0 \
+    --bucket wezvatech-eks-backup-2026-nov \
+    --secret-file /home/ubuntu/.aws/credentials \
+    --backup-location-config region=ap-south-1 \
+    --snapshot-location-config region=ap-south-1
+$ kubectl get pods -n velero
+
+  # Create backup
+$ velero backup create backup.1 
+$ velero backup get
+$ velero backup describe backup.1
+
+  # Restore from a specific backup
+$ velero restore create --from-backup backup.1
+
+# Uninstall Velero
+$ velero uninstall
+
+Assignment: Need the terraform code to do S3 bucket replication from 1 region to another region
+
+
+##- EKS Version Upgrade -##
+    ===================
+$ terraform init
+$ terraform plan -var="eksversion=1.34" -var="caversion=v1.34.4" -out eks1.34plan
+$ terraform apply eks1.34plan
+
+  #- Step 1 - update control plane & create new node groups i.e green version -#
+$ terraform plan -var="eksversion=1.35" -var="caversion=v1.35.2" -var="node_color=both" -out eks1.35
+$ terraform apply eks1.35
+
+  #- Step 2 -  Get blue node names and cordone/drain them
+$ kubectl get nodes -l eks.amazonaws.com/nodegroup=system-apps-pool-blue
+$ kubectl cordon <BLUE-NODE>
+$ kubectl drain <BLUE-NODE> --ignore-daemonsets --delete-emptydir-data
+$ terraform plan -var="eksversion=1.35" -var="caversion=v1.35.2" -var="node_color=green" -out eks1.35green
+$ terraform apply eks1.35green
+$ terraform destroy -auto-approve
+
+INFO: 1. Ensure the node groups are properly separated using labels & Taints.          
+      2. Ensure your application pods have proper labels, affinity, PDB
+
+##- Kubernetes Cluster Capacity Planning - ##
+    ====================================
+We will be running totally 4 diff set of applications/tools in any Kubernetes cluster
+1. Kubernetes System components i.e kube-proxy, kubelet, coredns
+2. Platform tools/agents/adds-on i.e calico, argocd, cluster-autoscaler, networking, logging, monitoring, security, mlflow, kserve etc
+3. Microservices (backend core)
+4. Microservices (machine learning services)
+
+Node Group 1 - Platform server tools, Core microservice, Platform client tools
+Node Group 2 - MLOps tools (Kserve), ML microservice, platform client tools
+
+
+  #- Kubernetes Worker Node Capacity -#
+     ===============================
+1. Determining the CPU, memory, storage required by each core microservice  
+  Backend core:  
+       # Main app -> 2 GB, 1 CPU
+       # Init -> 300 MB, 0.2 CPU
+
+2. Determining the CPU, memory, storage required by each Add on plugin & administration related applications (server & agent)
+   # Calico agent -> 600 MB, 0.3 vCPU
+   # ArgoRollout  -> 200 MB, 0.2 vCPU
+   # ArgoCD       ->   2 GB, 1 vCPU
+   # Prometheus exporters
+   # Grafana Alloy -> 1.5GB, 0.5 vCPU
+   # Grafana Loki
+   # Fluentbit
+   # Falco Agent
+   # Falcosidekick
+   # ClusterAutoscaler
+   # kube-proxy
+   # CoreDNS
+   # Velero
+   # Opentelemetry
+   # Istio        -> 2 GB, 1 vCPU
+   # Vault Operator
+
+# 16 vCPU's/24 GB RAM for Core services + 5 vCPU's/10 GB RAM for Platform tools + 10% of vCPU core & 20% of RAM (Tax)
+Core Services Node group 1 Subtotal: 22 vCPUs / 45 GB 
+- 3 nodes of m6i.2xlarge machine type [8 vCPUs and 32 GiB]
+
+3. Determining the CPU, memory, storage required by ML microservice  
+   When you run a model via KServe, every deployment (an InferenceService) spins up a multi-container pod structure:
+   # Fraud Predictor Container (Model): 2 vCPUs / 4 GB System Memory / 1 GPU VRAM (24GB)
+   # Queue-Proxy Sidecar (Knative traffic proxy): 0.5 vCPU / 0.5 GB Memory
+   # Storage-Initializer (Pulls models from S3 on boot): 0.2 vCPU / 0.5 GB Memory
+
+# 3 vCPUs / 5 GB for Fraud service + 1.3 vCPU / 2.5 GB Platform agents + OS Tax
+MLOps Node group 2 Subtotal: 5 vCPUs / 10 GB RAM / 1 NVIDIA L4 Tensor Core GPU
+- 2 node of g6.2xlarge machine type [ 8 vCPUs, 32 GiB and 1 × NVIDIA L4 ]
+
+
+# For a product, we have 3 release clusters i.e QA, Stage, Production. Either you have a dedicated Dev cluster for each product or add a nodegroup in QA cluster for Dev activities (for smaller teams)
+ - In case for multiple products within a Business Unit, you will create a separate large Dev cluster (multitenancy)
+# Lets assume our customers are in US, EU, UK, Asia - you will need 1 production cluster per region i.e US-east, US-west, Frankfurt, London, Mumbai, Singapore, Canada
+  - So totally we have to create/maintain 5-10 k8s clusters
+
+
+##- Observability for Kubernetes -##
+    ============================
+ # Prometheus - time-series monitoring tool which collects data frequently from different targets
+ # Grafana - Data visualization tool which gives dashboards
+
+1. Use Prometheus/Exporters & Grafana for overall Kubernetes cluster system health, Pod/container status & health
+2. Use Grafana & Alloy to capture the k8s events
+
+##- Setup Kind cluster -## (t3a.xlarge + 25 GB HDD)
+    ==================
+ 
+$ sudo apt update
+$ sudo apt install -y docker.io
+$ sudo usermod -a -G docker ubuntu
+
+$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+$ sudo curl -L "https://kind.sigs.k8s.io/dl/v0.20.0/kind-$(uname)-amd64" -o /usr/local/bin/kind && sudo chmod +x /usr/local/bin/kind
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+$ kind create cluster --name wezvatechdev --config=kindcluster.yml
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30000
+    hostPort: 30000
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 30100
+    hostPort: 30100
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 31000
+    hostPort: 31000
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 31100
+    hostPort: 31100
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 32000
+    hostPort: 32000
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+  - containerPort: 32100
+    hostPort: 32100
+    listenAddress: "0.0.0.0"
+    protocol: TCP
+- role: worker
+- role: worker
+
+$ kubectl get nodes
+
+##- Grafana Alloy and Loki to capture Kubernetes Events -##
+===========================================================
+
+* Grafana Alloy is a telemetry collector to gather process, events, traces of K8s
+* Grafana Loki is a log aggregation tool to collect & store logs
+
+##- Ensure Prometheus & Grafana is running -##
+# - Install Prometheus & Grafana - #
+    ============================
+
+$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 
+$ helm install prometheus prometheus-community/prometheus --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false --create-namespace -n monitoring
+$ helm list -n monitoring
+$ kubectl get pods -n monitoring
+$ kubectl expose service prometheus-server --type=NodePort --target-port=9090 --name=prometheus-server-np -n monitoring
+$ kubectl edit svc prometheus-server-np -n monitoring   # Change the NodePort to 30000
+
+$ helm repo add grafana https://grafana.github.io/helm-charts
+$ helm install grafana grafana/grafana -n monitoring
+$ kubectl expose service grafana --type=NodePort --target-port=3000 --name=grafana-np  -n monitoring
+$ kubectl edit svc grafana-np -n monitoring     # Change the NodePort to 30100
+$ kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+- Add datasource for Prometheus as "http://prometheus-server:80"
+
+# Import Dashboard 6417 & 14623 to see overall "Kubernetes Cluster" health
+# Import Dashboard 15760 to see "Pod level" health stats
+
+
+## - Deploy Loki - ##
+    ============
+$ git clone https://github.com/wezva-fintech/k8sgpt_diagnose.git 
+$ kubectl apply -f inotify.yml
+$ helm install loki grafana/loki -n loki --create-namespace -f lokivalues.yaml  
+$ kubectl get pods -n loki
+$ kubectl logs -f loki-0 -n loki
+
+## - Deploy Grafana Alloy - ##
+     ====================
+   ## - For Older Version Use this - $ helm install alloy grafana/k8s-monitoring -n loki -f alloyvalues.yml
+$ helm install alloy grafana/k8s-monitoring --version "^2.0.0" -n loki -f alloyvalues.yml
+$ kubectl logs -f <alloy-singleton_pod> -n loki
+$ kubectl events
+$ kubectl apply -f pod.yml
+
+# Goto Grafana -> Add Data source -> Loki
+# Give Url as http://loki.loki.svc.cluster.local:3100, add HTTP headers "X-Scope-OrgID" with value "1"
+     # NAMESPACE.SERIVCENAME.CLUSTER
+
+# - View the Telemetry on Grafana - #
+# Goto Grafana -> Explore -> Use Loki as source -> Under "Label filters" -> choose "Job" "=" "integrations/Kubernetes/eventhandler" -> run query from top right (blue repeating circle)
+
+# https://grafana.com/grafana/dashboards/20018-kubernetes-events-dashboard/
+# https://grafana.com/grafana/dashboards/16967-kubernetes-events-dashboard/
+
+## -- TO ENABLE LOGGING FOR APPLICATION -- ##
+      =================================
+INFO: Console logs, http-request.log, access.log, core.log
+
+  # Fluentbit/Logstatsh - log aggregration/collector tool 
+  # Opensearch - (elasticsearch+kibana) acts as a storage engine & data visualization tool for logs
+
+ # - Create S3 backup bucket - #
+     =======================
+$ git clone https://github.com/wezva-fintech/terraform-modules.git (main branch)
+  $ cd s3 
+  - Update main.tf with the required bucket name "wezvatech-nov-rawdata-applog"
+  $ terraform init
+  $ terraform plan -out s3opensearchplan
+  $ terraform apply s3opensearchplan
+  $ terraform destroy --auto-approve
+
+# - Deploy OpenSearch -#
+     =================
+   - Update variables.tf with your VPC ID, Subnets, Security Group
+  $ cd opensearchserverless
+  $ terraform init
+  $ terraform plan -out opensearch
+  $ terraform apply opensearch
+  $ terraform destroy --auto-approve
+
+  # - Install Fluentbit - #
+      =================
+$ git clone https://github.com/wezva-fintech/k8s-ledger-mysql.git
+$ cd k8s-ledger-mysql/logging
+$ kubectl create ns logging
+ - Update Opensearch serverless endpoint & S3 bucket name in fluentbit-configmap.yml
+ - Update AWS Credentials in fluentbit-secret.yml
+$ kubectl apply -f .
+$ kubectl logs -n logging -f <ANY-FLUENTD-POD>
+
+  # - View the logs in opensearch - #
+  Opensearch Dashboards > Management (3 lines on the left pane) > Stack Management > Index Patterns > Create index pattern
+   index pattern name as "logstash-*"
+   Time filed as "@timestamp"
+   Opensearch Dashboards > Discover
+
+##- Zero Trust Architecture -##
+===============================
+I - Infra level (Segregation of network)
+II - Cluster level
+ 1. User policies (RBAC) - useraccount, service account, Roles, ClusterRoleBinding
+ 2. Network Policies - ingress, egress, CNI
+ 3. Resource Policies - restrict how many k8s objects to be created (pod/services/PV/deployment/secret/CM), restrict total RAM/CPU usage for pods within a namespace
+ 4. Runtime security
+
+III - App level
+5. Continuous Verification (YAML) + Docker Image Verification
+
+$ kind get clusters
+$ kind delete clusters <ClusterName>
+
+## -- Create a new Kind cluster (Calico CNI) -- ##
+      =====================================
+$ git clone https://github.com/wezva-fintech/k8s-ledger-mysql.git deployments
+$ cd deployments 
+$ kind create cluster --name wezvatechprod --config=kindcluster.yml 
+
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+## -- Install Calico CNI -- ##
+      ==================
+
+$ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/tigera-operator.yaml
+$ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/custom-resources.yaml
+$ kubectl get pods -n calico-system --watch
+$ kubectl get nodes
+
+
+## -- Deploy Falco/Falcosidekick -- ##
+      ==========================
+# Falco is a runtime security tool
+# Falcosidekick is for sending the alerts to Dashboard or Loki/Grafana
+
+## - Falco to detect Zero day exploits in runtime - ##
+$ helm repo add falcosecurity https://falcosecurity.github.io/charts
+$ helm install falco falcosecurity/falco \
+  --set falcosidekick.enabled=true \
+  --set falcosidekick.webui.enabled=true  \
+  --set falcosidekick.config.loki.hostport="http://loki.loki.svc.cluster.local:3100"
+$ kubectl logs -f <falco-pod> -c falco     # Any one pod from daemonset
+$ kubectl logs -f <falco-falcosidekick-pod> | grep -i loki
+   - You should see Falcosidechick is forwarding the alerts to Loki
+           [INFO]  : Enabled Outputs: [Loki WebUI]
+           [INFO]  : Loki - POST OK (204)
+
+$ kubectl expose service falco-falcosidekick-ui --type=NodePort --target-port=2802 --name=falcosidekick-ui-np
+$ kubectl edit svc falcosidekick-ui-np     # Change the NodePort to 31000
+ - Access the Falcosidekick UI using 31000 port and admin/admin credentials
+
+# Run a sample pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.21
+    ports:
+    - containerPort: 80
+
+
+Assignment: See how we can migrate from Grafana loki to Opensearch i.e collect the k8s events from Alloy & push it to Opensearch
+
+## --------------------------------------- ##
+## MODULE 5 - Continuous Delivery Pipeline ##
+## --------------------------------------- ##
+
+* Unit Tests: Performed by developers to check the files modified by them for a particular functionality or feature is working before they commit the code
+* Functional Tests: Performed by QA to check the app/microservice has the newly developed/modified functionality is working (they take all the files in the app)
+* Integration Tests: Performed by QA after functional test to check whether all the induvial newly developed / modified functionality is working 
+* Regression Tests: Performed by QA after Integration test to check whether the newly created functionality is working fine with older/existing functionality
+* UAT: Performed by QA/Ops after Regression test to check end-end functionality of the app/microservice in a real-world scenario (in an env similar to production)
+
+Development -> Build App (microservice) -> Deploy App (run) -> Test
+
+Continuous Development (Dev) -> Continuous Integration(We) -> Continuous Deployment(We) -> Continuous Testing(QA)
+
+Feature branch: (dev) Code+Unit-test -> (We) Build -> (We) Deploy to QA env -> (QA) Functional test
+                                                           
+Main Branch: (Dev) merge from FB to Main -> (We)Build -> (We) Deploy to QA env -> (QA) Integration/Regression test
+                                                      -> (We) Deploy to STAGE env -> (QA) UAT test
+                                                      -> (We) Deploy to PROD env -> RELEASE
+
+INFO: 
+----
+1 Build Pipeline for each Feature Branch (On Push), 1 Build Pipeline for Main Branch (Pull_request)
+1 Deployment Pipeline for QA Deployment, 1 Deployment Pipeline for Stage & Prod
+
+Feature Branch: Benchmark for quality profile is 70-80% codecoverage, 5% code duplication, B type vuln, No Critical Vuln
+Main Branch: Benchmark for quality profile is 90% covderage, No Critical/High vuln, A type vuln
+
+INFO: If we have a dedicated GitHub runner inside our AWS infra, then attach the CI/CD pipeline persona i.e role, policies attached so that it can access to the ECR in our AWS infra
+
+Configuration Layer: App startup property files (db/kafka/cache server details, creds, log files, arguments), certificates
+
+GitHub Actions:
+ - Serves as Source code repository management & Pipeline automation
+ - We do not need dedicated VM's (GitHub uses runners)
+
+
+
+#- Ledger Microservice -#
+   ===================
+1. Create sonar cloud account using github account
+  https://sonarcloud.io/login
+- Ensure the GitHub project is public
+  GitHub Project -> Settings -> General -> Change repository visibility -> Public
+- Add GitHub repo's to Sonarcloud
+  Click (+ symbol) on the right top corner (next to account)
+  - Analyze project -> select the respective repo to scan and click setup 
+                    - New code definition for this project: Choose "Previous version" & Create project
+  - Ensure Automatic Analysis is disabled
+   Goto the added project -> Administration -> Analysis method -> Disable Automatic Analysis
+  - Create a Sonarcloud token for GitHub
+    Goto myaccount -> Security -> create token
+
+2. Create GitHub secret for Sonarcloud token i.e "sonarcloud"
+3. Create GitHub secret for AWS credentials
+4. Create secret for GitHub PT personal access token for the project i.e "GH_PAT"
+
+#- Input to Gen AI to create a Devsecops Build pipeline code -#
+   ---------------------------------------------------------
+I need a build pipeline for springboot microservice
+1. Trigger the build on commit to feature branch
+2. Need to input parameters to the pipeline before triggering i.e ecrul, docker repo name, ecr region
+3. Use a Ubuntu runner
+4. Install necessary dependencies of java 17, trivy, setup ecr cred, SonarQube token
+5. checkout & build springboot 
+6. run jacoco using maven
+7. run trivy for sca
+8. run SonarQube for SAST & push the details to sonarcloud, also run qualitygate
+9. build & push docker image to ECR, with tag as fb<buildnumber>
+10. fetch the ECR scanned results & check if it has High & critical vulns
+11. put a check to fail the pipeline if we find High or Critical vuln
+
+Traditional CICD Challenges:
+1. Build Pipeline can access Production cluster
+2. Redeployment is not possible 
+3. Multiple deployments is not possible
+4. Visibility of deployments
+
+- for 4 different deployments we need 4 copies of deployment yaml files in k8s
+- We build a Helm chart which will have the yaml files as templates & we can pass 4 different values w.r.t each deployment
+
+
+Setup ArgoCD
+------------
+$ kubectl create namespace argocd
+$ kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+$ kubectl get crd applicationsets.argoproj.io
+$ kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-applicationset-controller
+
+$ kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}' 
+
+# Edit the service port to 32000
+$ kubectl edit svc argocd-server -n argocd
+
+For version 1.9 or later:
+$ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+
+- Add the GitHub credentials in the ArgoCD setting and Apply the applicationset to ensure Argocd dynamically creates the Apps
+
+$ git clone https://github.com/wezva-fintech/ledger-deployment.git
+$ cd ledger-deployment
+$ kubectl apply -f applicationset-ledger.yml
+
+#- Notification Microservice -#
+   =========================
+
+1. Add Notification Build repo to the Sonarcloud as a new project
+2. Create GitHub secret for Sonarcloud token i.e "sonarcloud"
+3. Create GitHub secret for AWS credentials
+4. Create secret for GitHub PT personal access token for the project i.e "GH_PAT"
+
+node full image (npm+node cli)
+
+$ npm install (this downloads all the necessary modules to run the node.js app)
+$ node <app.js>
+
+  #- Payment Microservice -#
+     ====================
+$ go mod download (this downloads all the necessary modules to run the golang app)
+$ go build
+
+1. Add Payment Build repo to the Sonarcloud as a new project
+2. Create GitHub secret for Sonarcloud token i.e "sonarcloud"
+3. Create GitHub secret for AWS credentials
+4. Create secret for GitHub PT personal access token for the project i.e "GH_PAT"
+
+- Add the GitHub credentials in the ArgoCD setting and Apply the applicationset to ensure Argocd dynamically creates the Apps
+$ git clone https://github.com/wezva-fintech/payment-deployment.git
+$ cd payment-deployment
+$ kubectl apply -f applicationset-payment.yaml
+
+#- Responsibilities for Continuous Delivery of Core Microservices -#
+   =============================================================
+1. Understand the release process on where dev happens, what testing we do & where we do
+2. Containerize the microservice or App
+3. Setup Build pipeline
+4. Create Helm package & env based values.yml, then Setup Deployment pipeline
+5. Setup CICD pipelines & continuous delivery process
+
+## - Create AWS Kafka (MSK) Cluster - ##
+     ==============================
+
+$ git clone https://github.com/wezva-fintech/terraform-modules.git
+$ cd kafka
+$ terraform init
+$ terraform plan
+$ terraform apply -auto-approve
+
+ - Add topics as needed manually (from any server either terraform or deployment):
+# 1. Download Apache Kafka 3.6.0 tools binary package
+$ wget https://archive.apache.org/dist/kafka/3.6.0/kafka_2.13-3.6.0.tgz
+
+# 2. Extract the archive
+tar -xzf kafka_2.13-3.6.0.tgz
+
+# 3. Enter the binary folder
+cd kafka_2.13-3.6.0/bin/
+
+# 4. Download the compiled Amazon MSK IAM library JAR file
+$ sudo apt update && sudo apt install -y openjdk-17-jre-headless
+$ wget https://github.com/aws/aws-msk-iam-auth/releases/download/v2.3.7/aws-msk-iam-auth-2.3.7-all.jar
+
+# 5. Tell the Kafka binary to look for AWS credentials using a custom property block
+cat <<EOF > client-ssl.properties
+security.protocol=SASL_SSL
+sasl.mechanism=AWS_MSK_IAM
+sasl.jaas.config=software.amazon.msk.auth.iam.IAMLoginModule required;
+sasl.client.callback.handler.class=software.amazon.msk.auth.iam.IAMClientCallbackHandler
+EOF
+
+# 6. Add the authentication JAR to your terminal path variables
+export CLASSPATH=$PWD/aws-msk-iam-auth-2.3.7-all.jar
+
+# 7. Create a Payment topic
+$ ./kafka-topics.sh --create \
+  --bootstrap-server boot-ibxrwgce.c1.kafka-serverless.ap-south-1.amazonaws.com:9098 \
+  --command-config client-ssl.properties \
+  --replication-factor 2 \
+  --partitions 2 \
+  --topic payments
+
+$ ./kafka-topics.sh --list \
+  --bootstrap-server boot-ibxrwgce.c1.kafka-serverless.ap-south-1.amazonaws.com:9098 \
+  --command-config client-ssl.properties
+
+
+    =================
+##- LEDGER DEPLOYMENT - ##
+    =================
+
+- The ledger service opens a MySQL database transaction. It locks the user's account row, checks if they have enough money, subtracts the amount, adds it to the merchant's balance, and saves a tiny text record of the transaction.
+- The ledger service takes the huge, messy JSON response received from the bank networks, packages it up, and uploads it to S3 as a file. If the merchant needs a PDF receipts, the service generates it and saves it directly to S3 too.
+
+High Availability: Zero downtime
+Disaster Recovery: Recover your service/app without loss of data
+Autoscaling of DB server
+
+#- Why RDS? -#
+   ========
+1. we define the type of server & AWS manages creation of server, install DB & maintain it
+2. High Availability setup by RDS
+3. Automated Patching
+4. DB Upgrades
+5. Automated backups
+
+RDS Proxy Benefits:
+ - Reduce database load by pooling connections
+ - Automatic failover
+ - Enhanced security by integrating with AWS secret manager or AWS IAM authentication
+
+# We upgrade lower environments using in-place method & higher envs using blue-green method
+ - We upgrade major version once in 1-2 years
+
+# Version upgrade & Vertical scaling for CPU/RAM happens using blue-green method
+# When ledger system encounters high read traffic concurrency, only then we do Horizontal scaling by decoupling your database reads from your database writes and add 3 read replicas (more as we need)
+
+  ## INFO- This should be executed against Data network & in the 3 private subnets created for DB
+
+## -- Create AWS RDS MYSQL Database -- ##
+# git clone https://github.com/wezva-fintech/terraform-modules.git #
+$ cd rds-mysql-bluegreen
+# Step 1: New DB creation
+$ terraform init
+$ terraform plan -var="source_db_engine_version=8.4.13" -out db8.4.13
+$ terraform apply db8.4.13
+
+# Step 2: DB Upgrade
+$ terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -out dbupgrade8.4.4
+$ terraform apply "dbupgrade8.4.4"
+
+# Step 3: DB DNS Switch
+$ terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -var="trigger_switchover=true" -out dbswitchdns
+$ terraform apply "dbswitchdns"
+
+# Step 4: Delete Older DB
+$ terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -var="trigger_switchover=true" -var="delete_source_db=true" -out dbdeleteblue
+$ terraform apply "dbdeleteblue"
+
+# Step 5: Destroy all
+$ terraform destroy -auto-approve
+
+
+#- Kubernetes Objects needed for running Ledger microservice - # (Stateless)
+   =========================================================
+1. Namespace
+2. Deployment/ArgoRollout
+  2.0 Replicaset
+  2.1 Pod
+      - Init container for DB
+      - Main container for Ledger service
+        # Lifecylce (prestop cmd)
+        # Volume mount
+        # Resources (request, limit)
+        # Ports exposed
+        # Healthchecks (livenessprobe,readinessprobe)
+      - Number of Replicas 
+      - Node Anti Affinity
+      - Labels
+      - Annotations
+      - Volume
+      - Deployment strategy
+3. Service
+      - ClusterIP service for springboot (Active)
+      - ClusterIP service for springboot (Preview)
+      - ExternalName service for DB
+4. ConfigMap (Kafka|DB|UserDB|Log-Level|Log-file|Certificates|Heap-Memory)
+5. Secret ( 1 for AWS creds, 1 for db cred, 1 for ssl)
+6. Service Account - used by vault operator & accessing S3
+7. Network policies
+8. ResourceQuota
+9. HPA
+
+## -- Create a new Kind cluster -- ##
+
+$ git clone https://github.com/wezva-fintech/k8s-ledger-mysql.git deployments
+$ cd deployments 
+$ kind create cluster --name wezvatechprod --config=kindcluster.yml 
+
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+## -- Install Calico CNI -- ##
+      ==================
+
+$ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/tigera-operator.yaml
+$ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/custom-resources.yaml
+$ kubectl get pods -n calico-system --watch
+$ kubectl get nodes
+
+## -- Install the Vault using Helm chart -- ##
+
+$ helm repo add hashicorp https://helm.releases.hashicorp.com
+$ helm repo update
+$ helm install vault hashicorp/vault --set "server.dev.enabled=true"
+$ kubectl get pods --watch
+
+## -- Set a secret & ssl in Vault -- ##
+
+$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key \
+  -out tls.crt \
+  -subj "/CN=database.demo.svc.cluster.local/O=WezvaTech"
+
+$ kubectl exec -it vault-0 -- /bin/sh
+  $ vault secrets enable -path=internal kv-v2
+  $ vault kv put internal/database/config username="admin" password="wezvatech"
+  $ vault kv get internal/database/config
+  $ vault kv get internal/database/ssl
+
+$ jq -n --arg cert "$(<tls.crt)" --arg key "$(<tls.key)" '{"tls.crt": $cert, "tls.key": $key}' | kubectl exec -i vault-0 -- vault kv put internal/database/ssl -
+
+$ kubectl exec -it vault-0 -- /bin/sh
+## -- Configure Kubernetes authentication -- ##
+  $ vault auth enable kubernetes
+  $ vault write auth/kubernetes/config \
+      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
+  $ vault policy write wezvatech-admin - <<EOF
+path "internal/data/database/config" {
+   capabilities = ["read"]
+}
+path "internal/data/database/ssl" {
+   capabilities = ["read"]
+}
+EOF
+  $ vault write auth/kubernetes/role/wezvatech-admin \
+      bound_service_account_names=wezvatech-admin \
+      bound_service_account_namespaces=demo \
+      policies=wezvatech-admin \
+      ttl=24h
+
+## -- Install Argo Rollout -- ##
+
+# Install controller:
+$ kubectl create namespace argo-rollouts
+  - old one not working - 
+$ kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+
+$ kubectl apply --server-side --force-conflicts -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+
+$ kubectl get pods -n argo-rollouts --watch
+
+# Install plugin:
+$ curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64 && chmod +x ./kubectl-argo-rollouts-linux-amd64 &&  sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+$ kubectl argo rollouts version
+
+## -- Create secret to download images from ECR -- ##
+
+Install AWS Cli:
+ $ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+ $ sudo apt install unzip && unzip awscliv2.zip
+ $ sudo ./aws/install --bin-dir /usr/bin --install-dir /usr/bin/aws-cli --update
+ $ aws --version
+
+$ export AWS_ACCESS_KEY_ID=<YOUR_ACCESS_KEY_ID>
+$ export AWS_SECRET_ACCESS_KEY=<YOUR_SECRET_ACCESS_KEY>
+$ ACCOUNT=$(/usr/bin/aws sts get-caller-identity --query 'Account' --output text)
+$ REGION=ap-south-1
+$ TOKEN=$(/usr/bin/aws ecr get-authorization-token --region $REGION --output text --query 'authorizationData[0].authorizationToken' | base64 -d | cut -d: -f2)
+
+# Create a new namespace for the app to deploy
+$ kubectl create ns demo
+$ kubectl create secret docker-registry ecr-secret -n demo\
+   --docker-server=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com \
+   --docker-username=AWS \
+   --docker-password="$TOKEN" \
+   --docker-email=scmlearningcentre@gmail.com
+
+## -- Install Secret Operator to fetch secret from Vault -- #
+
+$ helm install vault-secrets-operator hashicorp/vault-secrets-operator
+$ kubectl get crd | grep vault
+
+## -- Apply Network Policies & Deploy -- #
+$ cd deployments/policies
+$ kubectl apply -f . -n demo
+
+# Apply label on any node of choice
+$ kubectl label nodes wezvatechprod-worker disktype=ssd --overwrite
+
+$ cd deployments/springboot
+ - Update the dbservice.yml with the Database endpoint from AWS
+ - Update the deployment.yml with the correct Image to run, MSK_BOOTSTRAP_SERVERS,
+
+$ kubectl apply -f . -n demo
+$ kubectl argo rollouts get rollout wezvaspringbootapp -n demo --watch
+$ kubectl exec -it -c main <podname> -n demo -- /bin/sh
+$ kubectl argo rollouts promote wezvaspringbootapp -n demo
+$ kubectl argo rollouts undo wezvaspringbootapp -n demo --to-revision=1 
+
+# <kind-server-ip>:31000/books to access the backend app active port
+# <kind-server-ip>:31100/books to access the backend app preview port
+
+## - Check the Blue-Green Deployment Strategy - ##
+  - Update the deployment yaml with a new image
+
+## -- TO ENABLE AUTOSCALING -- ## 
+ # -- Install Metrics Server -- #
+$ wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+# Edit components.yml & Find the containers section line 135 and add the following argument within the args list:
+                        - --kubelet-insecure-tls
+
+$ cd deployments/springboot/autoscaling
+$ kubectl apply -f components.yaml
+$ kubectl get apiservices --watch 
+  v1beta1.metrics.k8s.io                 kube-system/metrics-server    True       
+$ kubectl get pods -n kube-system --watch
+$ kubectl top nodes
+$ kubectl apply -f hpa.yml -n demo
+$ kubectl get hpa -n demo --watch
+
