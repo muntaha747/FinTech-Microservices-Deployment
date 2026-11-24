@@ -50,3 +50,4 @@ tls.crt
 password.txt
 *.csv
 .env
+mini-project/kubectl-argo-rollouts

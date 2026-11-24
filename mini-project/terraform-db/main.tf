@@ -31,11 +31,11 @@ resource "aws_db_instance" "blue" {
   db_name                = "mywezvadb"
   identifier             = "wezvadb-main-blue" # Identifier for the initial BLUE instance
   instance_class         = "db.t3.micro"
-  engine_version         = "8.4.13"
+  engine_version         = "8.0.46"
   allocated_storage      = 20
   publicly_accessible    = true
   username               = "admin"
-  password               = var.db_password # set with: export TF_VAR_db_password=...
+  password               = "wezvatech"
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
   backup_retention_period = 7
@@ -74,6 +74,7 @@ resource "null_resource" "create_snapshot" {
 
   provisioner "local-exec" {
     command = <<-EOT
+      set -e
       echo "Requesting snapshot creation..."
       aws rds create-db-snapshot --db-instance-identifier wezvadb-main-blue --db-snapshot-identifier wezvadb-main-blue-manual-snapshot
       echo "Waiting for snapshot to become available (this might take several minutes)..."
@@ -105,11 +106,11 @@ resource "aws_route53_zone" "private_test_zone" {
 #- Create DNS record for DB -#
 resource "aws_route53_record" "db" {
   zone_id = aws_route53_zone.private_test_zone.zone_id
-  name    = "prod.db.wezva.com"
+  name    = "prod.db.wezvatech-9739110917.internal"
   type    = "CNAME"
   ttl     = 300
 
   records = [
-    var.trigger_switchover ? aws_db_instance.green[0].address : aws_db_instance.blue[0].address
+    var.trigger_switchover ? aws_db_instance.green[0].address : try(aws_db_instance.blue[0].address, aws_db_instance.green[0].address)
   ]
 }

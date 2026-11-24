@@ -1,5 +1,5 @@
 variable "aws_region" {
-  default = "ap-south-1"
+  default = "us-east-1"
 }
 
 variable "trigger_green_creation" {
@@ -21,7 +21,7 @@ variable "delete_source_db" {
 }
 
 variable "target_db_engine_version" {
-  default = "9.7.4"
+  default = "8.4.8"
 }
 
 variable "target_instance_type" {
@@ -29,9 +29,3 @@ variable "target_instance_type" {
   default     = "db.t3.micro"
 }
 
-
-variable "db_password" {
-  description = "Master password of the blue RDS instance. Set it with: export TF_VAR_db_password='...'"
-  type        = string
-  sensitive   = true
-}
