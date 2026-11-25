@@ -1,2 +1,0 @@
-# WezvaTech-Project
-WezvaTech-Project
