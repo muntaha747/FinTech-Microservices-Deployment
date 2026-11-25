@@ -109,6 +109,8 @@ spec:
          - name: tls-volume
            mountPath: /etc/tls
            readOnly: true
+         - name: ledger-data
+           mountPath: /data
      volumes:
      - name: appconfigmap
        configMap:
@@ -119,3 +121,7 @@ spec:
      - name: tls-volume
        secret:
           secretName: database-ssl
+     - name: ledger-data
+       persistentVolumeClaim:
+         claimName: ledger-pvc
+

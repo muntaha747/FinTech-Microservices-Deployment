@@ -1,51 +1,13 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ledger Deployment Guide</title>
-<style>
-:root{
-  --bg:#0f1117; --panel:#161a23; --code-bg:#0b1f1d; --border:#2a2f3d;
-  --purple:#b794f6; --purple-strong:#d6bcfa; --teal:#2dd4bf; --teal-dim:#134e4a;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--purple);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-main{max-width:1000px;margin:0 auto;padding:32px 16px 80px}
-h1,h2,h3,h4{color:var(--purple-strong);line-height:1.3}
-h1{font-size:2rem;border-bottom:2px solid var(--border);padding-bottom:12px}
-h2{margin-top:48px;border-bottom:1px solid var(--border);padding-bottom:8px}
-a{color:var(--purple-strong)}
-strong{color:var(--purple-strong)}
-hr{border:0;border-top:1px solid var(--border);margin:32px 0}
-blockquote{margin:16px 0;padding:8px 16px;border-left:4px solid var(--purple);background:var(--panel);border-radius:6px}
-code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.92em}
-:not(pre)>code{color:var(--teal);background:var(--code-bg);padding:2px 6px;border-radius:4px}
-.code-wrap{position:relative;margin:16px 0}
-pre{margin:0;background:var(--code-bg);border:1px solid var(--teal-dim);border-radius:8px;padding:16px;padding-right:84px;overflow-x:auto}
-pre code{color:var(--teal);white-space:pre}
-.copy{position:absolute;top:8px;right:8px;background:var(--teal-dim);color:var(--teal);border:1px solid var(--teal);border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer}
-.copy:hover{background:var(--teal);color:#04201d}
-.copy.done{background:var(--teal);color:#04201d}
-table{border-collapse:collapse;width:100%;margin:16px 0;display:block;overflow-x:auto}
-th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
-th{background:var(--panel);color:var(--purple-strong)}
-li{margin:4px 0}
-</style>
-</head>
-<body>
-<main id="content">Loading…</main>
-<script type="text/markdown" id="md"># WezvaTech – Ledger Microservice Deployment
+# WezvaTech – Ledger Microservice Deployment
 
 Deployment guide for the **Ledger** microservice on a local **Kind** cluster (`powerful-cluster`) running on EC2, with **Argo Rollouts (Blue-Green)**, **HashiCorp Vault + Vault Secrets Operator**, **Calico**, **HPA**, and backing services on AWS (**RDS MySQL**, **MSK Kafka**, **S3**, **ECR**).
-
 ---
 
 ## Table of Contents
 
 1. [What the Ledger Service Does](#1-what-the-ledger-service-does)
 2. [Architecture & Environment](#2-architecture--environment)
-3. [Database – AWS RDS MySQL (Blue-Green)](#3-database--aws-rds-mysql-blue-green)
+3. [AWS Backing Services – RDS MySQL & MSK Kafka](#3-aws-backing-services--rds-mysql--msk-kafka)
 4. [Kubernetes Objects Used](#4-kubernetes-objects-used)
 5. [Repository Structure](#5-repository-structure)
 6. [Prerequisites](#6-prerequisites)
@@ -97,12 +59,13 @@ Browser ──> EC2 Public IP :30001 ──> Kind control-plane (port mapping) �
 | Kind cluster | `powerful-cluster` (1 control-plane + 3 workers) |
 | App namespace | `ledger` |
 | Vault namespace | `default` (pod `vault-0`, svc `vault`) |
+| Vault Secrets Operator namespace | `default` |
 | ServiceAccount | `wezvatech-admin` |
-| ECR image | `<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/wezvatechledger:<tag>` |
+| ECR image | `<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/fintech-ledgerservice:<tag>` |
 | ECR region | `us-east-1` |
 | RDS endpoint | `wezvadb-main-blue.cwhyq2cc07gy.us-east-1.rds.amazonaws.com` |
 | S3 bucket | `wezvatech-ledger-receipts-prod-env` |
-| Kafka | AWS MSK (`MSK_BOOTSTRAP_SERVERS`) |
+| Kafka | AWS MSK Serverless `fintech-demo-cluster`, topic `fraud-events` (`MSK_BOOTSTRAP_SERVERS`) |
 | Host-mapped NodePorts | `30000–30019` |
 
 **NodePort allocation**
@@ -117,7 +80,7 @@ Browser ──> EC2 Public IP :30001 ──> Kind control-plane (port mapping) �
 
 ---
 
-## 3. Database – AWS RDS MySQL (Blue-Green)
+## 3. AWS Backing Services – RDS MySQL & MSK Kafka
 
 **Why RDS**
 1. We choose the server type; AWS creates the server, installs and maintains MySQL.
@@ -137,36 +100,54 @@ Browser ──> EC2 Public IP :30001 ──> Kind control-plane (port mapping) �
 - Version upgrades and vertical scaling (CPU/RAM) use **Blue-Green**.
 - On high read concurrency: split reads from writes and add **3 read replicas** (more as needed).
 
-> **Run this in the Data VPC**, in the 3 private DB subnets. The Apps VPC reaches it through the Transit Gateway.
+### 3.1 RDS MySQL – `mini-project/terraform-db`
+
+What this Terraform creates (lab setup):
+
+| Resource | Value |
+|---|---|
+| Blue DB | `wezvadb-main-blue` – MySQL `8.0.46`, `db.t3.micro`, 20 GB, DB name `mywezvadb`, user `admin` |
+| Green DB | `wezvadb-main-green` – restored from snapshot `wezvadb-main-blue-manual-snapshot`, version `target_db_engine_version` (default `8.4.8`) |
+| Network | Default VPC, `publicly_accessible = true`, SG `rds_sg` allows `3306` |
+| DNS | Route 53 private zone `wezvatech-9739110917.internal`, CNAME `prod.db.wezvatech-9739110917.internal` → Blue (or Green after switchover) |
+| Backups | 7-day retention |
+| Region | `us-east-1` (`aws_region`) |
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `trigger_green_creation` | `false` | Snapshot Blue and create Green |
+| `trigger_switchover` | `false` | Point the Route 53 CNAME to Green |
+| `delete_source_db` | `false` | Delete Blue and the manual snapshot |
+| `target_db_engine_version` | `8.4.8` | Green DB version |
+| `target_instance_type` | `db.t3.micro` | Green DB instance size |
 
 ```bash
-git clone https://github.com/wezva-fintech/terraform-modules.git
-cd terraform-modules/rds-mysql-bluegreen
+cd ~/DevOps/WezvaTech-Project/mini-project/terraform-db
 ```
 
 **Step 1 – Create the DB (Blue)**
 ```bash
 terraform init
-terraform plan -var="source_db_engine_version=8.0.43" -out db8.0.43
-terraform apply "db8.0.43"
+terraform plan -out tfplan
+terraform apply tfplan
 ```
 
 **Step 2 – Create the upgraded Green DB**
 ```bash
-terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -out dbupgrade8.4.4
-terraform apply "dbupgrade8.4.4"
+terraform plan -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.8" -out tfplan
+terraform apply tfplan
 ```
 
 **Step 3 – Switch DNS to Green**
 ```bash
-terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -var="trigger_switchover=true" -out dbswitchdns
-terraform apply "dbswitchdns"
+terraform plan -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.8" -var="trigger_switchover=true" -out tfplan
+terraform apply tfplan
 ```
 
 **Step 4 – Delete the old Blue DB**
 ```bash
-terraform plan -var="source_db_engine_version=8.0.43" -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.4" -var="trigger_switchover=true" -var="delete_source_db=true" -out dbdeleteblue
-terraform apply "dbdeleteblue"
+terraform plan -var="trigger_green_creation=true" -var="target_db_engine_version=8.4.8" -var="trigger_switchover=true" -var="delete_source_db=true" -out tfplan
+terraform apply tfplan
 ```
 
 **Step 5 – Destroy everything (lab cleanup only)**
@@ -174,7 +155,31 @@ terraform apply "dbdeleteblue"
 terraform destroy -auto-approve
 ```
 
-> `source_db_engine_version` must always equal the version currently running on the Blue DB.
+> Keep passing every `-var` from the previous steps. Dropping one (e.g. `trigger_green_creation`) makes Terraform destroy that DB.
+>
+> The Route 53 zone is **private** (resolvable only inside the VPC). The Kind cluster reaches RDS through `mysql-svc` (ExternalName), so after the switchover update `externalName` in `service-networking/dbservice.yml` to the Green endpoint and re-apply it.
+>
+> `tfplan` can contain secrets – don't commit it.
+
+### 3.2 MSK Kafka (Serverless) – `mini-project/terraform-kafka`
+
+Creates MSK Serverless cluster `fintech-demo-cluster` in the default VPC (IAM auth, port `9098`) and the topic `fraud-events` (3 partitions).
+
+```bash
+cd ~/DevOps/WezvaTech-Project/mini-project/terraform-kafka
+terraform init
+terraform apply
+export KAFKA_BROKER=$(terraform output -raw bootstrap_brokers_sasl_iam)
+echo $KAFKA_BROKER
+```
+
+Send test events to `fraud-events`:
+```bash
+pip install kafka-python aws-msk-iam-sasl-signer-python
+python3 fraud-events-generations.py
+```
+
+> Use the `bootstrap_brokers_sasl_iam` output as `MSK_BOOTSTRAP_SERVERS` in `deployment.yml` (Section 15.2).
 
 ---
 
@@ -190,27 +195,36 @@ The Ledger service is **stateless**.
 | | ↳ Main container | Ledger app: preStop hook, volume mounts, requests/limits, port 8080, liveness/readiness probes |
 | | ↳ Pod settings | Replicas, node affinity (`disktype=ssd`), labels, annotations, volumes |
 | 3 | Services | `ledger-svc` (Active), `ledgernew-svc` (Preview), `mysql-svc` (ExternalName → RDS) |
-| 4 | ConfigMap | Kafka, DB, log level, log file, heap memory settings |
+| 4 | ConfigMap | `wezvaspringbootapp` → `application.properties.orig`: log levels, Actuator + health probes, Hikari pool, DB URL (`jdbc:mysql://mysql-svc/mywezvadb`), Kafka, S3 |
 | 5 | Secrets (from Vault) | `aws-secret`, `database-secret`, `database-ssl` |
 | 6 | ServiceAccount | `wezvatech-admin` – used by Vault Secrets Operator |
-| 7 | Network Policies | Calico ingress/egress rules |
-| 8 | ResourceQuota | Namespace limits |
-| 9 | HPA | Pod autoscaling on CPU/memory |
+| 7 | Network Policies | `default-deny` (all ingress) + Calico `allow-sprintboot-ingress` (TCP 8080 in, all egress) |
+| 8 | ResourceQuota | `mem-cpu-quota` – requests 3 CPU / 3Gi, limits 4 CPU / 5Gi |
+| 9 | HPA | `wezvaspringbootapp-hpa` – 1–2 replicas, memory 80% |
 
 ---
 
 ## 5. Repository Structure
 
 ```
-springboot-manifests-k8s/
+WezvaTech-Project/
 ├── README.md
-├── deployment.yml              # Argo Rollout (Blue-Green)
-├── configmap/                  # application.properties ConfigMap
-├── rbac/                       # ServiceAccount, Roles
-├── vault-auth-connection/      # VaultConnection + VaultAuth
-├── secrets/                    # VaultStaticSecrets (aws, db, ssl)
-├── service-networking/         # Services + Network Policies
-└── hpa/                        # metrics-server + HPA
+└── mini-project/
+    ├── kind-cluster.yaml                  # Kind cluster config (Section 7)
+    ├── calico/                            # Local copies of the Calico manifests
+    ├── terraform-db/                      # RDS MySQL Terraform
+    ├── terraform-kafka/                   # MSK Kafka Terraform + test event generator
+    └── ledger/
+        ├── springboot-manifests-k8s/
+        │   ├── deployment.yml             # Argo Rollout (Blue-Green)
+        │   ├── configmap/                 # application.properties ConfigMap
+        │   ├── rbac/                      # ServiceAccount
+        │   ├── vault-auth-connection/     # VaultConnection + VaultAuth
+        │   ├── secrets/                   # VaultStaticSecrets (aws, db, ssl)
+        │   ├── service-networking/        # Services (active, preview, mysql ExternalName)
+        │   └── hpa/                       # metrics-server + HPA
+        ├── policies-k8s/                  # Network policies + ResourceQuota
+        └── logging-k8s/                   # Fluent Bit DaemonSet
 ```
 
 ---
@@ -253,45 +267,104 @@ aws sts get-caller-identity
 
 ## 7. Create the Kind Cluster
 
-`kindcluster.yml`
+`mini-project/kind-cluster.yaml`
 ```yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: powerful-cluster
+nodes:
+- role: control-plane
+  extraPortMappings:             # NodePorts 30000-30019 -> EC2 host
+  - containerPort: 30000
+    hostPort: 30000
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30001
+    hostPort: 30001
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30002
+    hostPort: 30002
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30003
+    hostPort: 30003
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30004
+    hostPort: 30004
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30005
+    hostPort: 30005
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30006
+    hostPort: 30006
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30007
+    hostPort: 30007
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30008
+    hostPort: 30008
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30009
+    hostPort: 30009
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30010
+    hostPort: 30010
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30011
+    hostPort: 30011
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30012
+    hostPort: 30012
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30013
+    hostPort: 30013
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30014
+    hostPort: 30014
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30015
+    hostPort: 30015
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30016
+    hostPort: 30016
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30017
+    hostPort: 30017
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30018
+    hostPort: 30018
+    listenAddress: 0.0.0.0
+    protocol: TCP
+  - containerPort: 30019
+    hostPort: 30019
+    listenAddress: 0.0.0.0
+    protocol: TCP
+- role: worker
+- role: worker
+- role: worker
 networking:
   disableDefaultCNI: true        # Calico is installed instead
-  podSubnet: 10.244.0.0/16
-  serviceSubnet: 10.96.0.0/12
-nodes:
-  - role: control-plane
-    extraPortMappings:           # NodePorts 30000-30019 -> EC2 host
-      - { containerPort: 30000, hostPort: 30000, protocol: TCP }
-      - { containerPort: 30001, hostPort: 30001, protocol: TCP }
-      - { containerPort: 30002, hostPort: 30002, protocol: TCP }
-      - { containerPort: 30003, hostPort: 30003, protocol: TCP }
-      - { containerPort: 30004, hostPort: 30004, protocol: TCP }
-      - { containerPort: 30005, hostPort: 30005, protocol: TCP }
-      - { containerPort: 30006, hostPort: 30006, protocol: TCP }
-      - { containerPort: 30007, hostPort: 30007, protocol: TCP }
-      - { containerPort: 30008, hostPort: 30008, protocol: TCP }
-      - { containerPort: 30009, hostPort: 30009, protocol: TCP }
-      - { containerPort: 30010, hostPort: 30010, protocol: TCP }
-      - { containerPort: 30011, hostPort: 30011, protocol: TCP }
-      - { containerPort: 30012, hostPort: 30012, protocol: TCP }
-      - { containerPort: 30013, hostPort: 30013, protocol: TCP }
-      - { containerPort: 30014, hostPort: 30014, protocol: TCP }
-      - { containerPort: 30015, hostPort: 30015, protocol: TCP }
-      - { containerPort: 30016, hostPort: 30016, protocol: TCP }
-      - { containerPort: 30017, hostPort: 30017, protocol: TCP }
-      - { containerPort: 30018, hostPort: 30018, protocol: TCP }
-      - { containerPort: 30019, hostPort: 30019, protocol: TCP }
-  - role: worker
-  - role: worker
-  - role: worker
 ```
 
 ```bash
-kind create cluster --config kindcluster.yml
+cd ~/DevOps/WezvaTech-Project/mini-project
+kind create cluster --config kind-cluster.yaml
 kind get clusters
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
@@ -302,9 +375,11 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 ## 8. Install Calico CNI
 
+Uses the local copies in `mini-project/calico/` (operator `v1.32.7` / Calico v3.27). `custom-resources.yaml` also creates the Calico **APIServer**, which is needed for the `projectcalico.org/v3` network policy in `policies-k8s/`.
 ```bash
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/tigera-operator.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/custom-resources.yaml
+cd ~/DevOps/WezvaTech-Project/mini-project
+kubectl create -f calico/tigera-operator.yaml
+kubectl create -f calico/custom-resources.yaml
 kubectl get pods -n calico-system -w
 kubectl get nodes
 ```
@@ -358,16 +433,16 @@ kubectl exec -it vault-0 -- vault kv put internal/database/config username="admi
 
 **10.3 – Database SSL certificate**
 
-Generate a self-signed cert:
+Generate a self-signed cert (stored in `vault-auth-connection/`, git-ignored):
 ```bash
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout tls.key \
-  -out tls.crt \
+  -keyout vault-auth-connection/tls.key \
+  -out vault-auth-connection/tls.crt \
   -subj "/CN=database.ledger.svc.cluster.local/O=WezvaTech"
 ```
 Store it in Vault:
 ```bash
-jq -n --arg cert "$(<tls.crt)" --arg key "$(<tls.key)" '{"tls.crt": $cert, "tls.key": $key}' | kubectl exec -i vault-0 -- vault kv put internal/database/ssl -
+jq -n --arg cert "$(<vault-auth-connection/tls.crt)" --arg key "$(<vault-auth-connection/tls.key)" '{"tls.crt": $cert, "tls.key": $key}' | kubectl exec -i vault-0 -- vault kv put internal/database/ssl -
 ```
 - `jq` builds JSON from the files; `-` makes Vault read it from stdin, keeping the multi-line cert intact.
 
@@ -456,11 +531,12 @@ kubectl exec -it vault-0 -- vault read auth/kubernetes/role/wezvatech-admin
 ## 12. Install Vault Secrets Operator
 
 ```bash
-helm install vault-secrets-operator hashicorp/vault-secrets-operator -n vault-secrets-operator-system --create-namespace
-kubectl get pods -n vault-secrets-operator-system
+helm install vault-secrets-operator hashicorp/vault-secrets-operator
+kubectl get deploy vault-secrets-operator-controller-manager
 kubectl get crd | grep vault
 ```
-The operator reads secrets from Vault and creates/updates Kubernetes Secrets in `ledger`.
+- Installed in the `default` namespace (same as Vault).
+- The operator reads secrets from Vault and creates/updates Kubernetes Secrets in `ledger`.
 
 ---
 
@@ -488,6 +564,7 @@ Kind is not on AWS, so it needs a Docker login to pull from private ECR. The ECR
 
 ```bash
 kubectl create ns ledger
+cd ~/DevOps/WezvaTech-Project/mini-project/ledger/springboot-manifests-k8s
 
 export AWS_ACCESS_KEY_ID=$(vault kv get -field=access_key internal/aws/config)
 export AWS_SECRET_ACCESS_KEY=$(vault kv get -field=secret_access_key internal/aws/config)
@@ -499,8 +576,10 @@ TOKEN=$(aws ecr get-authorization-token --region $REGION --output text --query '
 kubectl create secret docker-registry ecr-secret -n ledger \
   --docker-server=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com \
   --docker-username=AWS \
-  --docker-password="$TOKEN"
+  --docker-password="$TOKEN" \
+  --dry-run=client -o yaml > secrets/ecr-secret.yaml
 ```
+- Writes the secret to `secrets/ecr-secret.yaml` (git-ignored); it is applied with the other secrets in 15.5.
 
 | Item | Why |
 |---|---|
@@ -508,11 +587,12 @@ kubectl create secret docker-registry ecr-secret -n ledger \
 | `ACCOUNT` | Builds the registry URL `<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com` |
 | `TOKEN` | Temporary ECR password (12h) |
 | `ecr-secret` | Referenced by the Rollout under `imagePullSecrets` |
+| `--dry-run=client -o yaml` | Saves the Secret as a file instead of creating it directly |
 
 **Refresh after 12 hours**
 ```bash
-kubectl delete secret ecr-secret -n ledger
-# then re-run the TOKEN + create secret commands above
+# re-run the TOKEN + create secret commands above, then:
+kubectl apply -f secrets/ecr-secret.yaml
 ```
 
 ---
@@ -527,18 +607,19 @@ kubectl get nodes -L disktype
 
 **15.2 – Update the manifests before applying**
 
-| File | What to set |
-|---|---|
-| `service-networking/` → `mysql-svc` | `externalName: wezvadb-main-blue.cwhyq2cc07gy.us-east-1.rds.amazonaws.com` |
-| `service-networking/` → `ledger-svc` | `nodePort: 30001` |
-| `service-networking/` → `ledgernew-svc` | `nodePort: 30002` |
-| `deployment.yml` | `image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/wezvatechledger:<tag>` |
-| `deployment.yml` | `MSK_BOOTSTRAP_SERVERS: "b-1.<cluster>.kafka.<region>.amazonaws.com:9094,b-2.<cluster>.kafka.<region>.amazonaws.com:9094"` |
-| `deployment.yml` | TLS volume `secretName: database-ssl` |
+| File | Field | Set to | Currently in the file |
+|---|---|---|---|
+| `service-networking/dbservice.yml` (`mysql-svc`) | `externalName` | RDS endpoint (Section 3.1) | `wezvadb-main-blue.cwhyq2cc07gy.us-east-1.rds.amazonaws.com` ✅ |
+| `service-networking/appservice.yml` (`ledger-svc`) | `nodePort` | `30001` | `31000` ⚠️ outside 30000–30019 |
+| `service-networking/previewservice.yml` (`ledgernew-svc`) | `nodePort` | `30002` | `31100` ⚠️ outside 30000–30019 |
+| `deployment.yml` | `image` | `<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/fintech-ledgerservice:<tag>` | tag `rel-46-1bf7b424` ✅ |
+| `deployment.yml` | `MSK_BOOTSTRAP_SERVERS` | `terraform output -raw bootstrap_brokers_sasl_iam` (Section 3.2, port `9098`) | placeholder ⚠️ |
+| `deployment.yml` | `AWS_REGION` | Region of the S3 bucket | `ap-south-1` ⚠️ (ECR/RDS/MSK are `us-east-1`) |
+| `deployment.yml` | TLS volume `secretName` | `database-ssl` | `database-ssl` ✅ |
 
 **15.3 – Vault Operator files**
 
-`rbac/serviceaccount.yml`
+`rbac/serviceaccount.yaml`
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -637,24 +718,50 @@ spec:
 | `destination.type` | `kubernetes.io/tls` for certs, default `Opaque` |
 | `refreshAfter` | Re-sync interval from Vault |
 
-**15.4 – Secrets referenced in the Rollout (`deployment.yml`)**
+**15.4 – Rollout pod spec (`deployment.yml`)**
 ```yaml
      serviceAccountName: wezvatech-admin
+     affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                - ssd
      imagePullSecrets:
        - name: ecr-secret
+     initContainers:
+       - name: init-mydb
+         image: busybox:1.28
+         command: ['sh', '-c', "until nslookup mysql-svc.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
+         resources:
+            limits:
+              cpu: 400m
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
      containers:
        - name: main
+         image: 747240980649.dkr.ecr.us-east-1.amazonaws.com/fintech-ledgerservice:rel-46-1bf7b424
+         imagePullPolicy: IfNotPresent
+         lifecycle:
+           preStop:
+             exec:
+               command: ["/bin/sh", "-c", "sleep 15"] # Gives Kafka client time to stop pulling new messages
          env:
          - name: AWS_ACCESS_KEY_ID
            valueFrom:
              secretKeyRef:
-               name: aws-secret
-               key: access_key
+                name: aws-secret
+                key: access_key
          - name: AWS_SECRET_ACCESS_KEY
            valueFrom:
              secretKeyRef:
-               name: aws-secret
-               key: secret_access_key
+                name: aws-secret
+                key: secret_access_key
          - name: DB_USER
            valueFrom:
              secretKeyRef:
@@ -666,38 +773,76 @@ spec:
                name: database-secret
                key: password
          - name: MSK_BOOTSTRAP_SERVERS
-           value: "<broker-1>:9094,<broker-2>:9094"
+           value: "<bootstrap_brokers_sasl_iam from Section 3.2>"
          - name: AWS_REGION
-           value: "us-east-1"
+           value: "ap-south-1"
          - name: S3_BUCKET_NAME
            value: "wezvatech-ledger-receipts-prod-env"
+         ports:
+           - containerPort: 8080
+         livenessProbe:
+           httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+           initialDelaySeconds: 90
+           periodSeconds:  45
+           timeoutSeconds:  5
+         readinessProbe:
+           httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+           initialDelaySeconds: 90
+           timeoutSeconds:  5
+           periodSeconds: 5
+         resources:
+            limits:
+              cpu: 400m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 128Mi
          volumeMounts:
+         - name: appconfigmap
+           mountPath: "/opt/wezva/application.properties.orig"
+           subPath: application.properties.orig
          - name: tls-volume
            mountPath: /etc/tls
            readOnly: true
      volumes:
+     - name: appconfigmap
+       configMap:
+         name: wezvaspringbootapp
+         items:
+         - key: application.properties.orig
+           path: application.properties.orig
      - name: tls-volume
        secret:
-         secretName: database-ssl
+          secretName: database-ssl
 ```
 > Env var names must be exactly `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (underscores) for the AWS SDK. `key:` must match the key inside the Kubernetes Secret.
+>
+> The ConfigMap is mounted as `/opt/wezva/application.properties.orig`; Spring reads `${DB_USER}`, `${DB_PASSWORD}`, `${MSK_BOOTSTRAP_SERVERS}`, `${AWS_REGION}` and `${S3_BUCKET_NAME}` from the env vars above.
 
-**15.5 – Apply in order** (do **not** pass `-n ledger` – each file sets its own namespace; metrics-server lives in `kube-system`)
+**15.5 – Apply in order** (from `mini-project/ledger/springboot-manifests-k8s`)
 ```bash
-kubectl apply -R -f rbac/
-kubectl apply -R -f vault-auth-connection/
-kubectl apply -R -f secrets/
-kubectl apply -R -f configmap/
-kubectl apply -R -f service-networking/
+kubectl apply -f rbac/
+kubectl apply -f vault-auth-connection/
+kubectl apply -f secrets/                      # 3 VaultStaticSecrets + ecr-secret.yaml
+kubectl apply -f configmap/
+kubectl apply -f service-networking/
 kubectl apply -f deployment.yml
-kubectl apply -R -f hpa/
+kubectl apply -f hpa/metric-server.yaml        # namespace kube-system (set in the file)
+kubectl apply -f hpa/hpa.yml -n ledger         # no namespace in the file
+kubectl apply -f ../policies-k8s/ -n ledger    # default-deny, Calico allow 8080, ResourceQuota
 ```
+> `hpa.yml`, `default-deny.yml` and `resourcequota.yml` have no `namespace:` – always apply them with `-n ledger`. Don't add `-n ledger` to `metric-server.yaml` (it is `kube-system`).
 
 **15.6 – Verify**
 ```bash
 kubectl get vaultstaticsecret -n ledger
 kubectl get secret database-secret database-ssl aws-secret ecr-secret -n ledger
 kubectl get svc -n ledger
+kubectl get hpa,resourcequota,networkpolicy -n ledger
 kubectl argo rollouts get rollout wezvaspringbootapp -n ledger --watch
 ```
 
@@ -737,7 +882,7 @@ kubectl get events -n ledger --sort-by=.lastTimestamp | grep -iE "probe|unhealth
 - `READY 1/1` → readiness passing.
 - Rising `RESTARTS` → liveness failing.
 
-> Probe endpoints return 404? Add `management.endpoint.health.probes.enabled=true` to `application.properties`.
+> Probes are enabled in the ConfigMap with `management.endpoint.health.probes.enabled=true`. Both probes start after `initialDelaySeconds: 90` (liveness every 45s, readiness every 5s, timeout 5s).
 
 ---
 
@@ -766,14 +911,8 @@ kubectl get events -n ledger --sort-by=.lastTimestamp | grep -iE "probe|unhealth
 ## 18. Autoscaling – Metrics Server & HPA
 
 **Metrics Server** (runs in `kube-system`)
-```bash
-wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -O hpa/metric-server.yaml
-```
-Edit `hpa/metric-server.yaml` → under the `metrics-server` container `args:`, add:
-```yaml
-        - --kubelet-insecure-tls
-```
-(Kind kubelets use self-signed certs.)
+
+`hpa/metric-server.yaml` is metrics-server `v0.7.2` with `--kubelet-insecure-tls` already added to `args:` (Kind kubelets use self-signed certs).
 
 ```bash
 kubectl apply -f hpa/metric-server.yaml
@@ -784,11 +923,12 @@ kubectl top pods -n ledger
 ```
 
 **HPA**
+`hpa/hpa.yml` – `wezvaspringbootapp-hpa` scales the Rollout `wezvaspringbootapp` between **1 and 2** replicas on **memory 80%**.
 ```bash
-kubectl apply -f hpa/hpa.yml
+kubectl apply -f hpa/hpa.yml -n ledger
 kubectl get hpa -n ledger -w
 ```
-`TARGETS` should show values like `15%/70%`, not `<unknown>`.
+`TARGETS` should show values like `memory: 60%/80%`, not `<unknown>`.
 
 ---
 
@@ -819,7 +959,8 @@ Login: **Method = Token**, **Token = `root`** (dev mode).
 | `FailedMount ... secret "X" not found` | `secretName` in Rollout ≠ `destination.name` in VaultStaticSecret |
 | `ImagePullBackOff` | `ecr-secret` missing or token expired (>12h) → Section 14 |
 | Pod `Pending` | No node labeled `disktype=ssd` → 15.1 |
-| `namespace "kube-system" does not match "ledger"` | Don't use `-n ledger` with `kubectl apply -R` |
+| `namespace "kube-system" does not match "ledger"` | Don't use `-n ledger` with `hpa/metric-server.yaml` |
+| HPA / ResourceQuota / default-deny in `default` namespace | Applied without `-n ledger` → delete and re-apply with `-n ledger` |
 | `last-applied-configuration` warning | Harmless – annotation is auto-added |
 | App not reachable from browser | NodePort must be in `30000–30019` + Security Group rule |
 | `Metrics API not available` | metrics-server not running / missing `--kubelet-insecure-tls` |
@@ -827,32 +968,161 @@ Login: **Method = Token**, **Token = `root`** (dev mode).
 
 **Useful logs**
 ```bash
-kubectl logs -n vault-secrets-operator-system deploy/vault-secrets-operator-controller-manager | tail -30
+kubectl logs -n default deploy/vault-secrets-operator-controller-manager | tail -30
 kubectl logs -n ledger -l app.kubernetes.io/name=wezvaspringbootapp -c main --tail=100
 kubectl logs -n argo-rollouts deploy/argo-rollouts | tail -30
 ```
-</script>
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-<script>
-const src = document.getElementById('md').textContent;
-const main = document.getElementById('content');
-main.innerHTML = marked.parse(src, {gfm:true});
-main.querySelectorAll('h1,h2,h3,h4').forEach(h=>{
-  h.id = h.textContent.trim().toLowerCase().replace(/[^\w\s-]/g,'').replace(/\s/g,'-');
-});
-main.querySelectorAll('pre').forEach(pre=>{
-  const wrap = document.createElement('div'); wrap.className='code-wrap';
-  pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
-  const btn = document.createElement('button'); btn.className='copy'; btn.textContent='Copy';
-  btn.onclick = async ()=>{
-    const text = pre.innerText.replace(/\n$/,'');
-    try { await navigator.clipboard.writeText(text); }
-    catch(e){ const t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    btn.textContent='Copied'; btn.classList.add('done');
-    setTimeout(()=>{btn.textContent='Copy'; btn.classList.remove('done');},1500);
-  };
-  wrap.appendChild(btn);
-});
-</script>
-</body>
-</html>
+Kind (PVC on EC2 EBS)
+
+Persistent storage for the Ledger app on the **running** Kind cluster `powerful-cluster` (namespace `ledger`), using Kind's built-in `standard` StorageClass. Data is stored on the EC2 instance's existing EBS disk. No cluster recreate needed.
+
+```
+EC2 EBS disk ──> Kind worker (local-path) ──> PV (auto) ──> ledger-pvc ──> Pod /data
+```
+
+---
+
+## 1. Check the StorageClass and free disk space
+
+```bash
+kubectl get storageclass
+```
+```bash
+df -h /
+```
+- Must show `standard (default)`.
+- EC2 disk must have at least **50G** free.
+
+---
+
+## 2. Create the 50Gi PVC
+
+```bash
+cat > ledger-pvc.yaml <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ledger-pvc
+  namespace: ledger
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 50Gi
+EOF
+```
+```bash
+kubectl delete pvc ledger-pvc -n ledger --ignore-not-found
+```
+```bash
+kubectl apply -f ledger-pvc.yaml
+```
+- The PV is created automatically when a pod first uses the PVC.
+- `Pending` is normal until the Rollout uses it.
+- `local-path` cannot resize – to change size, delete and recreate the PVC.
+
+---
+
+## 3. Mount the PVC in the Rollout (`deployment.yml`)
+
+```bash
+cd ~/DevOps/WezvaTech-Project/mini-project/ledger/springboot-manifests-k8s
+```
+
+Under the `main` container `volumeMounts:`
+```yaml
+         - name: ledger-data
+           mountPath: /data
+```
+
+Under `volumes:`
+```yaml
+     - name: ledger-data
+       persistentVolumeClaim:
+         claimName: ledger-pvc
+```
+- `/data` is the folder **inside the container**. Anything the app writes there is stored on the PVC.
+
+---
+
+## 4. Send the app logs to `/data` (`configmap/configmap.yml`)
+
+Add after the `logging.level` lines:
+```
+        logging.file.name=/data/logs/ledger.log
+        logging.logback.rollingpolicy.max-file-size=50MB
+        logging.logback.rollingpolicy.max-history=7
+```
+- Logs go to `/data/logs/ledger.log` on the PVC.
+- Rotated at 50 MB, last 7 files kept.
+
+---
+
+## 5. Apply
+
+```bash
+kubectl apply -f configmap/configmap.yml
+```
+```bash
+kubectl apply -f deployment.yml
+```
+```bash
+kubectl argo rollouts get rollout wezvaspringbootapp -n ledger --watch
+```
+
+---
+
+## 6. Verify
+
+```bash
+kubectl get pvc -n ledger
+```
+```bash
+kubectl get pods -n ledger
+```
+```bash
+kubectl exec -it -c main <pod-name> -n ledger -- ls -l /data/logs/
+```
+- PVC must show `Bound`.
+
+---
+
+## 7. Test that data survives a pod restart
+
+```bash
+kubectl exec -it -c main <pod-name> -n ledger -- sh -c 'echo persistent > /data/test.txt'
+```
+```bash
+kubectl delete pod <pod-name> -n ledger
+```
+```bash
+kubectl get pods -n ledger
+```
+```bash
+kubectl exec -it -c main <new-pod-name> -n ledger -- cat /data/test.txt
+```
+- Prints `persistent` → storage is persistent.
+
+---
+
+## 8. Where the data lives on EC2
+
+```bash
+kubectl get pv
+```
+```bash
+docker exec powerful-cluster-worker ls /var/local-path-provisioner/
+```
+# volume id and select that volume. the reason it is inside the docker becasue the nodes are our containers.
+sudo su
+cd /var/lib/docker
+
+# If it is the EKS Workder node the path will be in the --> 
+/var/lib/kubelet/pods/<pod-uid>/volumes/kubernetes.io~csi/<pv-name>/mount
+
+---
+
+
+# WezvaTech – Payment Microservice Deployment
