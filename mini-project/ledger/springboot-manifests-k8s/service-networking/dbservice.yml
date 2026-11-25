@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-svc
+  namespace: ledger
+spec:
+  type: ExternalName
+  externalName: "wezvadb-main-blue.cwhyq2cc07gy.us-east-1.rds.amazonaws.com"

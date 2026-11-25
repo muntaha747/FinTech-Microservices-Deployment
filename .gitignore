@@ -51,3 +51,5 @@ password.txt
 *.csv
 .env
 mini-project/kubectl-argo-rollouts
+mini-project/ledger/logging-k8s/fluentbit-secret.yml
+mini-project/ledger/springboot-manifests-k8s/secrets/ecr-secret.yaml
