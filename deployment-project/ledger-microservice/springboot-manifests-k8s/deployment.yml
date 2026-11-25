@@ -74,9 +74,9 @@ spec:
                name: database-secret
                key: password
          - name: MSK_BOOTSTRAP_SERVERS
-           value: "://amazonaws.com,://amazonaws.com"
+           value: "boot-rtm7d5ir.c1.kafka-serverless.us-east-1.amazonaws.com:9098"
          - name: AWS_REGION
-           value: "ap-south-1"
+           value: "us-east-1"
          - name: S3_BUCKET_NAME
            value: "wezvatech-ledger-receipts-prod-env"
          ports:

@@ -43,10 +43,17 @@ data:
         spring.datasource.password=${DB_PASSWORD}
 
         ## ===================================================================
-        ## AWS MSK Kafka Configuration (Via Transit Gateway)
+        ## AWS MSK Serverless Kafka Configuration (us-east-1, IAM auth)
         ## ===================================================================
         # This will read the comma-separated MSK string from your Deployment YAML
         spring.kafka.bootstrap-servers=${MSK_BOOTSTRAP_SERVERS}
+
+        # MSK Serverless only accepts TLS + IAM auth on port 9098
+        # (needs the software.amazon.msk:aws-msk-iam-auth library in the app)
+        spring.kafka.security.protocol=SASL_SSL
+        spring.kafka.properties.sasl.mechanism=AWS_MSK_IAM
+        spring.kafka.properties.sasl.jaas.config=software.amazon.msk.auth.iam.IAMLoginModule required;
+        spring.kafka.properties.sasl.client.callback.handler.class=software.amazon.msk.auth.iam.IAMClientCallbackHandler
 
         # Consumer settings
         spring.kafka.consumer.group-id=ledger-service-group

@@ -614,7 +614,7 @@ kubectl get nodes -L disktype
 | `service-networking/previewservice.yml` (`ledgernew-svc`) | `nodePort` | `30002` | `31100` ⚠️ outside 30000–30019 |
 | `deployment.yml` | `image` | `<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/fintech-ledgerservice:<tag>` | tag `rel-46-1bf7b424` ✅ |
 | `deployment.yml` | `MSK_BOOTSTRAP_SERVERS` | `terraform output -raw bootstrap_brokers_sasl_iam` (Section 3.2, port `9098`) | placeholder ⚠️ |
-| `deployment.yml` | `AWS_REGION` | Region of the S3 bucket | `ap-south-1` ⚠️ (ECR/RDS/MSK are `us-east-1`) |
+| `deployment.yml` | `AWS_REGION` | Region of the S3 bucket | `us-east-1` |
 | `deployment.yml` | TLS volume `secretName` | `database-ssl` | `database-ssl` ✅ |
 
 **15.3 – Vault Operator files**
@@ -775,7 +775,7 @@ spec:
          - name: MSK_BOOTSTRAP_SERVERS
            value: "<bootstrap_brokers_sasl_iam from Section 3.2>"
          - name: AWS_REGION
-           value: "ap-south-1"
+           value: "us-east-1"
          - name: S3_BUCKET_NAME
            value: "wezvatech-ledger-receipts-prod-env"
          ports:
