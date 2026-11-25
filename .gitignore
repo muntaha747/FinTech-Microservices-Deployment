@@ -50,6 +50,9 @@ tls.crt
 password.txt
 *.csv
 .env
-mini-project/kubectl-argo-rollouts
-mini-project/ledger/logging-k8s/fluentbit-secret.yml
-mini-project/ledger/springboot-manifests-k8s/secrets/ecr-secret.yaml
+deployment-project/kubectl-argo-rollouts
+deployment-project/ledger-microservice/logging-k8s/fluentbit-secret.yml
+deployment-project/ledger-microservice/springboot-manifests-k8s/secrets/ecr-secret.yaml
+__pycache__/
+*.pyc
+tfplan

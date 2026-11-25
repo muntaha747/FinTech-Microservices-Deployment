@@ -100,7 +100,7 @@ Browser ──> EC2 Public IP :30001 ──> Kind control-plane (port mapping) �
 - Version upgrades and vertical scaling (CPU/RAM) use **Blue-Green**.
 - On high read concurrency: split reads from writes and add **3 read replicas** (more as needed).
 
-### 3.1 RDS MySQL – `mini-project/terraform-db`
+### 3.1 RDS MySQL – `deployment-project/terraform-db`
 
 What this Terraform creates (lab setup):
 
@@ -122,7 +122,7 @@ What this Terraform creates (lab setup):
 | `target_instance_type` | `db.t3.micro` | Green DB instance size |
 
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project/terraform-db
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project/terraform-db
 ```
 
 **Step 1 – Create the DB (Blue)**
@@ -161,12 +161,12 @@ terraform destroy -auto-approve
 >
 > `tfplan` can contain secrets – don't commit it.
 
-### 3.2 MSK Kafka (Serverless) – `mini-project/terraform-kafka`
+### 3.2 MSK Kafka (Serverless) – `deployment-project/terraform-kafka`
 
 Creates MSK Serverless cluster `fintech-demo-cluster` in the default VPC (IAM auth, port `9098`) and the topic `fraud-events` (3 partitions).
 
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project/terraform-kafka
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project/terraform-kafka
 terraform init
 terraform apply
 export KAFKA_BROKER=$(terraform output -raw bootstrap_brokers_sasl_iam)
@@ -207,14 +207,14 @@ The Ledger service is **stateless**.
 ## 5. Repository Structure
 
 ```
-WezvaTech-Project/
+FinTech-Microservices-Deployment/
 ├── README.md
-└── mini-project/
+└── deployment-project/
     ├── kind-cluster.yaml                  # Kind cluster config (Section 7)
     ├── calico/                            # Local copies of the Calico manifests
     ├── terraform-db/                      # RDS MySQL Terraform
     ├── terraform-kafka/                   # MSK Kafka Terraform + test event generator
-    └── ledger/
+    └── ledger-microservice/
         ├── springboot-manifests-k8s/
         │   ├── deployment.yml             # Argo Rollout (Blue-Green)
         │   ├── configmap/                 # application.properties ConfigMap
@@ -267,7 +267,7 @@ aws sts get-caller-identity
 
 ## 7. Create the Kind Cluster
 
-`mini-project/kind-cluster.yaml`
+`deployment-project/kind-cluster.yaml`
 ```yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -363,7 +363,7 @@ networking:
 ```
 
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project
 kind create cluster --config kind-cluster.yaml
 kind get clusters
 docker ps --format "table {{.Names}}\t{{.Ports}}"
@@ -375,9 +375,9 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 ## 8. Install Calico CNI
 
-Uses the local copies in `mini-project/calico/` (operator `v1.32.7` / Calico v3.27). `custom-resources.yaml` also creates the Calico **APIServer**, which is needed for the `projectcalico.org/v3` network policy in `policies-k8s/`.
+Uses the local copies in `deployment-project/calico/` (operator `v1.32.7` / Calico v3.27). `custom-resources.yaml` also creates the Calico **APIServer**, which is needed for the `projectcalico.org/v3` network policy in `policies-k8s/`.
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project
 kubectl create -f calico/tigera-operator.yaml
 kubectl create -f calico/custom-resources.yaml
 kubectl get pods -n calico-system -w
@@ -417,7 +417,7 @@ vault login root
 
 Run from the manifests folder:
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project/ledger/springboot-manifests-k8s
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project/ledger-microservice/springboot-manifests-k8s
 ```
 
 **10.1 – Enable the KV v2 engine** (one time)
@@ -564,7 +564,7 @@ Kind is not on AWS, so it needs a Docker login to pull from private ECR. The ECR
 
 ```bash
 kubectl create ns ledger
-cd ~/DevOps/WezvaTech-Project/mini-project/ledger/springboot-manifests-k8s
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project/ledger-microservice/springboot-manifests-k8s
 
 export AWS_ACCESS_KEY_ID=$(vault kv get -field=access_key internal/aws/config)
 export AWS_SECRET_ACCESS_KEY=$(vault kv get -field=secret_access_key internal/aws/config)
@@ -823,7 +823,7 @@ spec:
 >
 > The ConfigMap is mounted as `/opt/wezva/application.properties.orig`; Spring reads `${DB_USER}`, `${DB_PASSWORD}`, `${MSK_BOOTSTRAP_SERVERS}`, `${AWS_REGION}` and `${S3_BUCKET_NAME}` from the env vars above.
 
-**15.5 – Apply in order** (from `mini-project/ledger/springboot-manifests-k8s`)
+**15.5 – Apply in order** (from `deployment-project/ledger-microservice/springboot-manifests-k8s`)
 ```bash
 kubectl apply -f rbac/
 kubectl apply -f vault-auth-connection/
@@ -1028,7 +1028,7 @@ kubectl apply -f ledger-pvc.yaml
 ## 3. Mount the PVC in the Rollout (`deployment.yml`)
 
 ```bash
-cd ~/DevOps/WezvaTech-Project/mini-project/ledger/springboot-manifests-k8s
+cd ~/DevOps/FinTech-Microservices-Deployment/deployment-project/ledger-microservice/springboot-manifests-k8s
 ```
 
 Under the `main` container `volumeMounts:`
